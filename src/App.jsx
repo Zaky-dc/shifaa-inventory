@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 function App() {
   const [produtos, setProdutos] = useState([]);
   const [contagem, setContagem] = useState({});
+  const API_URL = "https://shifaa-inventory-backend.onrender.com";
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -41,7 +42,8 @@ function App() {
       };
     });
 
-    fetch('https://https://vitejsvitex8imut2l-p5hl--5173--cf284e50.local-corp.webcontainer.io/contagem', {
+    console.log('Enviando para:', `${API_URL}/contagem`);
+    fetch(`${API_URL}/contagem`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(resultado),
@@ -120,5 +122,6 @@ function App() {
 }
 
 export default App;
+
 
 

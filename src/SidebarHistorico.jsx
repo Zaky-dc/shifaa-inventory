@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 
 const SidebarHistorico = ({ onSelecionarData }) => {
   const [datas, setDatas] = useState([]);
+  const API_URL = import.meta.env.VITE_API_URL || "https://shifaa-inventory-backend.onrender.com";
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/datas`)
+    fetch(`${API_URL}/datas`)
       .then(res => res.json())
       .then(setDatas)
       .catch(err => console.error('Erro ao carregar datas:', err));
@@ -30,3 +31,4 @@ const SidebarHistorico = ({ onSelecionarData }) => {
 };
 
 export default SidebarHistorico;
+

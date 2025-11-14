@@ -1,27 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useState } from "react";
+import { GiHamburgerMenu } from "react-icons/gi";
+import { IoIosClose } from "react-icons/io";
 
-const SidebarHistorico = ({ onSelecionarData }) => {
-  const [datas, setDatas] = useState([]);
-  const API_URL = import.meta.env.VITE_API_URL || "https://shifaa-inventory-backend.onrender.com";
-
-  useEffect(() => {
-    fetch(`${API_URL}/datas`)
-      .then(res => res.json())
-      .then(setDatas)
-      .catch(err => console.error('Erro ao carregar datas:', err));
-  }, []);
+const SidebarHistorico = ({ onSelecionarData, datas }) => {
+  const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <aside className="w-64 bg-gray-100 p-4 border-r overflow-y-auto">
-      <h2 className="text-lg font-bold mb-4">📅 Histórico de Contagens</h2>
-      <ul className="space-y-2">
-        {datas.map(data => (
+    <aside
+      className={`transition-all duration-300 bg-gray-100 border-r h-screen ${
+        isOpen ? "w-64" : "w-20"
+      }`}
+    >
+      <div className="flex justify-between items-center p-4">
+        {isOpen && <h2 className="text-lg font-bold">📅 Histórico</h2>}
+        <button onClick={() => setIsOpen(!isOpen)} className="text-2xl">
+          {isOpen ? <IoIosClose /> : <GiHamburgerMenu />}
+        </button>
+      </div>
+
+      <ul className="space-y-2 px-4 overflow-y-auto">
+        {datas.map((data) => (
           <li key={data}>
             <button
               onClick={() => onSelecionarData(data)}
-              className="text-blue-600 hover:underline"
+              className="text-blue-600 hover:underline text-sm"
             >
-              {data}
+              {isOpen ? data : "📅"}
             </button>
           </li>
         ))}
@@ -31,5 +35,6 @@ const SidebarHistorico = ({ onSelecionarData }) => {
 };
 
 export default SidebarHistorico;
+
 
 

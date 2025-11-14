@@ -11,7 +11,6 @@ function App() {
   const [datas, setDatas] = useState([]);
   const API_URL = import.meta.env.VITE_API_URL || "https://shifaa-inventory-backend.onrender.com";
 
-  // Carregar datas do histórico
   useEffect(() => {
     fetch(`${API_URL}/datas`)
       .then(res => res.json())
@@ -19,7 +18,6 @@ function App() {
       .catch(err => console.error('Erro ao carregar datas:', err));
   }, []);
 
-  // Upload de XLSX
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     const reader = new FileReader();
@@ -38,12 +36,10 @@ function App() {
     reader.readAsArrayBuffer(file);
   };
 
-  // Alterar contagem manual
   const handleContagemChange = (codigo, value) => {
     setContagem({ ...contagem, [codigo]: value });
   };
 
-  // Salvar contagem no backend
   const salvarContagem = () => {
     if (!armazem) {
       alert("Selecione um armazém antes de salvar.");
@@ -82,7 +78,6 @@ function App() {
       });
   };
 
-  // Carregar contagem por data
   const carregarContagemPorData = (data, armazemFiltro = "") => {
     const url = armazemFiltro
       ? `${API_URL}/contagem?armazem=${encodeURIComponent(armazemFiltro)}`
@@ -94,7 +89,6 @@ function App() {
       .catch(err => console.error('Erro ao carregar contagem:', err));
   };
 
-  // Exportar para XLSX
   const exportarParaExcel = () => {
     if (produtos.length === 0) {
       alert("Nenhum dado para exportar.");
@@ -110,12 +104,12 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-white text-gray-800">
+    <div className="flex flex-col md:flex-row h-screen bg-white text-black">
       <SidebarHistorico datas={datas} onSelecionarData={carregarContagemPorData} />
 
       <main className="flex-1 p-4 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold mb-4 text-blue-600">📦 Sistema de Inventário</h1>
+          <h1 className="text-2xl font-bold mb-4">📦 Sistema de Inventário</h1>
 
           <input
             type="file"
@@ -148,7 +142,7 @@ function App() {
                   {produtos.map((p, i) => {
                     const real = Number(contagem[p.codigo]) || 0;
                     const diferenca = real - p.sistema;
-                    const destaque = diferenca !== 0 ? 'bg-yellow-100 text-red-600' : '';
+                    const destaque = diferenca !== 0 ? 'bg-yellow-100' : '';
 
                     return (
                       <tr key={i} className={`hover:bg-gray-50 ${destaque}`}>
@@ -195,6 +189,7 @@ function App() {
 }
 
 export default App;
+
 
 
 

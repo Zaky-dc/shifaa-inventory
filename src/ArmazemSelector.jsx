@@ -13,7 +13,8 @@ const ArmazemSelector = ({ armazem, setArmazem }) => {
   }, []);
 
   const criarArmazem = () => {
-    if (!novoArmazem.trim()) {
+    const nome = novoArmazem.trim();
+    if (!nome) {
       alert("Digite um nome válido para o armazém.");
       return;
     }
@@ -21,13 +22,13 @@ const ArmazemSelector = ({ armazem, setArmazem }) => {
     fetch(`${API_URL}/armazens`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome: novoArmazem.trim() }),
+      body: JSON.stringify({ nome }),
     })
       .then(res => res.json())
       .then(data => {
-        alert(data.message);
-        setArmazens([...armazens, novoArmazem.trim()]);
-        setArmazem(novoArmazem.trim());
+        alert(data.message || "Armazém criado com sucesso!");
+        setArmazens([...armazens, nome]);
+        setArmazem(nome);
         setNovoArmazem("");
       })
       .catch(err => {
@@ -38,11 +39,11 @@ const ArmazemSelector = ({ armazem, setArmazem }) => {
 
   return (
     <div className="mb-6">
-      <label className="block mb-2 font-semibold text-gray-700">🏬 Selecionar Armazém</label>
+      <label className="block mb-2 font-semibold text-white">🏬 Selecionar Armazém</label>
       <select
         value={armazem}
         onChange={(e) => setArmazem(e.target.value)}
-        className="w-full border px-3 py-2 rounded mb-2"
+        className="w-full border px-3 py-2 rounded text-black mb-2"
       >
         <option value="">Escolha um armazém</option>
         {armazens.map((a, i) => (
@@ -56,7 +57,7 @@ const ArmazemSelector = ({ armazem, setArmazem }) => {
           value={novoArmazem}
           onChange={(e) => setNovoArmazem(e.target.value)}
           placeholder="Novo armazém..."
-          className="flex-1 border px-3 py-2 rounded"
+          className="flex-1 border px-3 py-2 rounded text-black"
         />
         <button
           onClick={criarArmazem}
@@ -70,3 +71,4 @@ const ArmazemSelector = ({ armazem, setArmazem }) => {
 };
 
 export default ArmazemSelector;
+

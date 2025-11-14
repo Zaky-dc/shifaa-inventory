@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import SidebarHistorico from './SidebarHistorico';
+import ArmazemSelector from './ArmazemSelector';
 
 function App() {
   const [produtos, setProdutos] = useState([]);
   const [contagem, setContagem] = useState({});
+  const [armazem, setArmazem] = useState("");
   const API_URL = import.meta.env.VITE_API_URL || "https://shifaa-inventory-backend.onrender.com";
 
   const handleFileUpload = (e) => {
@@ -30,6 +32,11 @@ function App() {
   };
 
   const salvarContagem = () => {
+    if (!armazem) {
+      alert("Selecione um armazém antes de salvar.");
+      return;
+    }
+
     const hoje = new Date().toISOString().split('T')[0];
     const resultado = produtos.map((p) => {
       const real = Number(contagem[p.codigo]) || 0;
@@ -41,6 +48,7 @@ function App() {
         real,
         diferenca,
         data: hoje,
+        armazem,
       };
     });
 
@@ -82,6 +90,8 @@ function App() {
           className="mb-6 block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
         />
 
+        <ArmazemSelector armazem={armazem} setArmazem={setArmazem} />
+
         {produtos.length === 0 && (
           <div className="text-gray-500 mb-6">
             📁 Carregue um ficheiro `.xlsx` ou selecione uma data no histórico.
@@ -89,9 +99,9 @@ function App() {
         )}
 
         {produtos.length > 0 && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
             <table className="min-w-full border border-gray-300 rounded-lg shadow-sm">
-              <thead className="bg-gray-100">
+              <thead className="bg-gray-100 sticky top-0">
                 <tr>
                   <th className="px-4 py-2 border text-left">Código</th>
                   <th className="px-4 py-2 border text-left">Descrição</th>
@@ -116,7 +126,7 @@ function App() {
                           type="number"
                           value={contagem[p.codigo] || ''}
                           onChange={(e) => handleContagemChange(p.codigo, e.target.value)}
-                          className="w-20 px-2 py-1 border rounded text-center"
+                          className="w-20 px-2 py-1 border rounded text-center focus:ring focus:ring-blue-300"
                         />
                       </td>
                       <td className="px-4 py-2 border text-center font-semibold">
@@ -142,6 +152,7 @@ function App() {
 }
 
 export default App;
+
 
 
 

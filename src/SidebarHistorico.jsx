@@ -12,7 +12,7 @@ const SidebarHistorico = ({ onSelecionarData }) => {
   }, []);
 
   return (
-    <aside className="w-64 bg-gray-100 p-4 border-r">
+    <aside className="w-64 bg-gray-100 p-4 border-r overflow-y-auto">
       <h2 className="text-lg font-bold mb-4">📅 Histórico de Contagens</h2>
       <ul className="space-y-2">
         {datas.map(data => (
@@ -31,4 +31,5 @@ const SidebarHistorico = ({ onSelecionarData }) => {
 };
 
 export default SidebarHistorico;
+
 

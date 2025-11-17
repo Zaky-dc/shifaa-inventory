@@ -3,15 +3,16 @@ import { MdDelete } from 'react-icons/md';
 import { GiHamburgerMenu } from 'react-icons/gi';
 import { IoIosClose } from 'react-icons/io';
 
-export default function SidebarHistorico({ sidebarAberto, setSidebarAberto, onSelecionarData }) {
+export default function SidebarHistorico({ onSelecionarData }) {
   const [datas, setDatas] = useState([]);
+  const [isOpen, setIsOpen] = useState(true);
   const API_URL = import.meta.env.VITE_API_URL || 'https://shifaa-inventory-backend.onrender.com';
 
   useEffect(() => {
     fetch(`${API_URL}/datas`)
-      .then(r => r.json())
+      .then((r) => r.json())
       .then(setDatas)
-      .catch(err => console.error('Erro ao carregar datas:', err));
+      .catch((err) => console.error('Erro ao carregar datas:', err));
   }, []);
 
   const apagarData = async (item) => {
@@ -22,7 +23,7 @@ export default function SidebarHistorico({ sidebarAberto, setSidebarAberto, onSe
       const res = await fetch(`${API_URL}/contagem/${item.data}`, { method: 'DELETE' });
       const msg = await res.json();
       alert(msg.message || 'Apagado');
-      setDatas(prev => prev.filter(d => d.data !== item.data));
+      setDatas((prev) => prev.filter((d) => d.data !== item.data));
     } catch (err) {
       console.error(err);
       alert('Erro ao apagar.');
@@ -30,26 +31,17 @@ export default function SidebarHistorico({ sidebarAberto, setSidebarAberto, onSe
   };
 
   return (
-    <aside
-      className={`
-        fixed top-0 left-0 h-screen z-40 transition-all duration-300
-        bg-white/90 backdrop-blur-sm border-r shadow-lg
-        ${sidebarAberto ? 'w-64' : 'w-16'}
-        sm:relative sm:w-64
-      `}
-    >
+    <aside className={`fixed top-0 left-0 h-screen z-30 transition-all duration-300 ${isOpen ? 'w-64' : 'w-16'} bg-white/60 backdrop-blur-sm border-r shadow-lg`}>
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <div className="rounded-md w-10 h-10 bg-sky-600 text-white flex items-center justify-center font-bold">SI</div>
-          {sidebarAberto && (
-            <div>
-              <div className="text-sm font-semibold text-sky-700">Arquivos</div>
-              <div className="text-xs text-gray-500">Últimas contagens</div>
-            </div>
-          )}
+          {isOpen && <div>
+            <div className="text-sm font-semibold text-sky-700">Arquivos</div>
+            <div className="text-xs text-gray-500">Últimas contagens</div>
+          </div>}
         </div>
-        <button onClick={() => setSidebarAberto(!sidebarAberto)} className="p-2 rounded hover:bg-gray-100 sm:hidden">
-          {sidebarAberto ? <IoIosClose size={20} /> : <GiHamburgerMenu size={18} />}
+        <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded hover:bg-gray-100">
+          {isOpen ? <IoIosClose size={20} /> : <GiHamburgerMenu size={18} />}
         </button>
       </div>
 
@@ -67,15 +59,16 @@ export default function SidebarHistorico({ sidebarAberto, setSidebarAberto, onSe
                   <div className="text-sm font-medium text-gray-800">{item.armazem}</div>
                   <div className="text-xs text-gray-500">{item.data}</div>
                 </div>
-                <MdDelete
-                  onClick={(e) => { e.stopPropagation(); apagarData(item); }}
-                  className="text-red-500 hover:text-red-700 cursor-pointer"
-                />
+                <div className="flex items-center gap-2">
+                  <MdDelete onClick={(e) => { e.stopPropagation(); apagarData(item); }} className="text-red-500 hover:text-red-700 cursor-pointer" />
+                </div>
               </button>
             </li>
           ))}
         </ul>
       </div>
+
     </aside>
   );
 }
+

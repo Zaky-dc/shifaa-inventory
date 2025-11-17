@@ -3,7 +3,8 @@ import { MdDelete } from 'react-icons/md';
 import { GiHamburgerMenu } from 'react-icons/gi';
 import { IoIosClose } from 'react-icons/io';
 
-export default function SidebarHistorico({ onSelecionarData }) {
+export default function SidebarHistorico({ onSelecionarData, sidebarAberto, setSidebarAberto })
+ {
   const [datas, setDatas] = useState([]);
   const [isOpen, setIsOpen] = useState(true);
   const API_URL = import.meta.env.VITE_API_URL || 'https://shifaa-inventory-backend.onrender.com';
@@ -31,7 +32,11 @@ export default function SidebarHistorico({ onSelecionarData }) {
   };
 
   return (
-    <aside className={`fixed top-0 left-0 h-screen z-30 transition-all duration-300 ${isOpen ? 'w-64' : 'w-16'} bg-white/60 backdrop-blur-sm border-r shadow-lg`}>
+   <aside
+  className={`fixed top-0 left-0 h-screen z-30 transition-all duration-300 
+  ${sidebarAberto ? 'w-64' : 'w-16'}
+  bg-white/60 backdrop-blur-sm border-r shadow-lg`}
+>
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <div className="rounded-md w-10 h-10 bg-sky-600 text-white flex items-center justify-center font-bold">SI</div>
@@ -40,9 +45,13 @@ export default function SidebarHistorico({ onSelecionarData }) {
             <div className="text-xs text-gray-500">Últimas contagens</div>
           </div>}
         </div>
-        <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded hover:bg-gray-100">
-          {isOpen ? <IoIosClose size={20} /> : <GiHamburgerMenu size={18} />}
-        </button>
+       <button
+  onClick={() => setSidebarAberto(!sidebarAberto)}
+  className="p-2 rounded hover:bg-gray-100"
+>
+  {sidebarAberto ? <IoIosClose size={20} /> : <GiHamburgerMenu size={18} />}
+</button>
+
       </div>
 
       <div className="px-3 pt-2 overflow-auto h-[calc(100vh-80px)]">

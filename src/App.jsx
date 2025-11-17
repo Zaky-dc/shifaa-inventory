@@ -1,233 +1,237 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import SidebarHistorico from './SidebarHistorico';
-import ArmazemSelector from './ArmazemSelector';
+import SidebarHistorico from './components/SidebarHistorico';
+import ArmazemSelector from './components/ArmazemSelector';
 
-function App() {
+export default function App() {
   const [produtos, setProdutos] = useState([]);
   const [contagem, setContagem] = useState({});
-  const [armazem, setArmazem] = useState("");
-  const [busca, setBusca] = useState("");
-  const API_URL = import.meta.env.VITE_API_URL || "https://shifaa-inventory-backend.onrender.com";
+  const [armazem, setArmazem] = useState('');
+  const [busca, setBusca] = useState('');
+
+  const API_URL = import.meta.env.VITE_API_URL || 'https://shifaa-inventory-backend.onrender.com';
 
   const handleFileUpload = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(sheet).map((item) => ({
-        codigo: item.Cod,
-        nome: item.Desc,
-        sistema: Number(item.sis) || 0,
-      }));
-      setProdutos(json);
-      setContagem({});
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet).map((item) => ({
+          codigo: String(item.Cod ?? item.Código ?? item.COD ?? item.codigo ?? '').trim(),
+          nome: String(item.Desc ?? item.Descrição ?? item.Desc ?? item.nome ?? '').trim(),
+          sistema: Number(item.sis ?? item.SIS ?? 0) || 0,
+        }));
+
+        setProdutos(json.filter(p => p.codigo));
+        setContagem({});
+      } catch (err) {
+        console.error('Erro ao ler ficheiro:', err);
+        alert('Formato do ficheiro inválido. Verifique o .xlsx.');
+      }
     };
+
     reader.readAsArrayBuffer(file);
   };
 
   const handleContagemChange = (codigo, value) => {
-    setContagem({ ...contagem, [codigo]: value });
+    setContagem((prev) => ({ ...prev, [codigo]: value }));
   };
 
-  const salvarContagem = () => {
-    if (!armazem) {
-      alert("Selecione um armazém antes de salvar.");
-      return;
-    }
+  const salvarContagem = async () => {
+    if (!armazem) return alert('Selecione um armazém antes de salvar.');
+    if (produtos.length === 0) return alert('Não há produtos carregados.');
 
     const hoje = new Date().toISOString().split('T')[0];
-    const resultado = produtos.map((p) => {
+    const payload = produtos.map((p) => {
       const real = Number(contagem[p.codigo]) || 0;
-      const diferenca = real - p.sistema;
       return {
         codigo: p.codigo,
         nome: p.nome,
         sistema: p.sistema,
         real,
-        diferenca,
+        diferenca: real - p.sistema,
         data: hoje,
         armazem,
       };
     });
 
-    fetch(`${API_URL}/contagem`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(resultado),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        alert(data.message || 'Contagem registrada com sucesso!');
-        setProdutos([]);
-        setContagem({});
-      })
-      .catch((err) => {
-        console.error(err);
-        alert('Erro ao salvar contagem.');
+    try {
+      const res = await fetch(`${API_URL}/contagem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
-  };
-
-  const carregarContagemPorData = (data) => {
-    fetch(`${API_URL}/contagem/${data}`)
-      .then(res => res.json())
-      .then((dados) => {
-        if (!dados || dados.length === 0) {
-          alert("Nenhuma contagem encontrada para esta data.");
-          return;
-        }
-
-        const produtosSalvos = dados.map((item) => ({
-          codigo: item.codigo,
-          nome: item.nome,
-          sistema: item.sistema,
-        }));
-
-        const contagemSalva = {};
-        dados.forEach((item) => {
-          contagemSalva[item.codigo] = item.real;
-        });
-
-        setProdutos(produtosSalvos);
-        setContagem(contagemSalva);
-        setArmazem(dados[0].armazem);
-      })
-      .catch(err => {
-        console.error('Erro ao carregar contagem:', err);
-        alert("Erro ao carregar contagem.");
-      });
+      const data = await res.json();
+      alert(data.message || 'Contagem registrada com sucesso!');
+      setProdutos([]);
+      setContagem({});
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar contagem.');
+    }
   };
 
   const exportarParaExcel = () => {
-    if (produtos.length === 0) {
-      alert("Nenhum dado para exportar.");
-      return;
-    }
+    if (!produtos.length) return alert('Nenhum dado para exportar.');
 
-    const dadosExportados = produtos.map((p) => ({
+    const dados = produtos.map((p) => ({
       Código: p.codigo,
       Descrição: p.nome,
       Sistema: p.sistema,
-      Real: contagem[p.codigo] || 0,
-      Diferença: (contagem[p.codigo] || 0) - p.sistema,
+      Real: Number(contagem[p.codigo]) || 0,
+      Diferença: (Number(contagem[p.codigo]) || 0) - p.sistema,
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(dadosExportados);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Contagem");
-
-    const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([buffer], { type: "application/octet-stream" });
-    saveAs(blob, `contagem_${armazem || "geral"}.xlsx`);
+    const ws = XLSX.utils.json_to_sheet(dados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Contagem');
+    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([buffer], { type: 'application/octet-stream' }), `contagem_${armazem || 'geral'}.xlsx`);
   };
 
   const produtosFiltrados = produtos.filter((p) =>
-    p.codigo.toLowerCase().includes(busca.toLowerCase()) ||
-    p.nome.toLowerCase().includes(busca.toLowerCase())
+    (`${p.codigo} ${p.nome}`).toLowerCase().includes(busca.toLowerCase())
   );
 
   return (
-    <div className="bg-white text-gray-800 min-h-screen">
-      {/* Sidebar fixo */}
-      <SidebarHistorico onSelecionarData={carregarContagemPorData} />
+    <div className="flex min-h-screen bg-gray-50 text-gray-800">
+      <SidebarHistorico onSelecionarData={(d, a) => {
+        // A Sidebar chama esta função com data e armazem
+        // Implementação opcional: buscar contagem por data
+        fetch(`${API_URL}/contagem/${d}`)
+          .then(r => r.json())
+          .then((dados) => {
+            if (!dados || dados.length === 0) return alert('Nenhuma contagem encontrada nessa data.');
+            const produtosSalvos = dados.map(it => ({ codigo: it.codigo, nome: it.nome, sistema: it.sistema }));
+            const cont = {};
+            dados.forEach(it => (cont[it.codigo] = it.real));
+            setProdutos(produtosSalvos);
+            setContagem(cont);
+            setArmazem(dados[0].armazem || '');
+          })
+          .catch(err => { console.error(err); alert('Erro ao carregar contagem.'); });
+      }} />
 
-      {/* Conteúdo principal deslocado */}
-      <main className="ml-64 p-4 overflow-y-auto min-h-screen">
-        <div className="max-w-4xl w-full mx-auto">
-          <h1 className="text-2xl font-bold mb-4 text-blue-700">📦 Contagem de Inventário</h1>
-
-          <input
-            type="file"
-            accept=".xlsx"
-            onChange={handleFileUpload}
-            className="mb-4 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-          />
-
-          <ArmazemSelector armazem={armazem} setArmazem={setArmazem} />
-
-          {produtos.length > 0 && (
-            <>
-              <input
-                type="text"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="🔍 Buscar por código ou descrição..."
-                className="mb-4 w-full px-3 py-2 border rounded text-sm"
-              />
-              <div className="overflow-x-auto max-h-[60vh] overflow-y-auto border rounded shadow-sm">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-100 sticky top-0">
-                    <tr>
-                      <th className="px-2 py-1 border text-left">Código</th>
-                      <th className="px-2 py-1 border text-left">Descrição</th>
-                      <th className="px-2 py-1 border text-center">Sistema</th>
-                      <th className="px-2 py-1 border text-center">Real</th>
-                      <th className="px-2 py-1 border text-center">Diferença</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {produtosFiltrados.map((p, i) => {
-                      const real = Number(contagem[p.codigo]) || 0;
-                      const diferenca = real - p.sistema;
-                      const destaque = diferenca !== 0 ? 'bg-yellow-100 text-red-600' : '';
-
-                      return (
-                        <tr key={i} className={`hover:bg-gray-50 ${destaque}`}>
-                          <td className="px-2 py-1 border">{p.codigo}</td>
-                          <td className="px-2 py-1 border">{p.nome}</td>
-                          <td className="px-2 py-1 border text-center">{p.sistema}</td>
-                          <td className="px-2 py-1 border text-center">
-                            <input
-                              type="number"
-                              value={contagem[p.codigo] || ''}
-                              onChange={(e) => handleContagemChange(p.codigo, e.target.value)}
-                              className="w-16 px-2 py-1 border rounded text-center"
-                            />
-                          </td>
-                          <td className="px-2 py-1 border text-center font-semibold">
-                            {diferenca}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
-                <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                  <button
-                    onClick={salvarContagem}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-                  >
-                    Salvar Contagem
-                  </button>
-                  <button
-                    onClick={exportarParaExcel}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
-                  >
-                    Exportar XLSX
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {produtos.length === 0 && (
-            <div className="text-gray-500 mt-6 italic">
-              📁 Carregue um ficheiro `.xlsx` ou selecione uma data no histórico.
+      <main className="flex-1 p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-semibold text-sky-700">📦 Contagem de Inventário</h1>
+              <p className="text-sm text-gray-500 mt-1">Importe um ficheiro .xlsx e faça a contagem rápida.</p>
             </div>
-          )}
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={exportarParaExcel}
+                className="hidden sm:inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:brightness-95 transition"
+                aria-label="Exportar para Excel"
+              >
+                Exportar XLSX
+              </button>
+
+              <button
+                onClick={salvarContagem}
+                className="bg-sky-600 text-white px-4 py-2 rounded-lg shadow hover:brightness-95 transition"
+                aria-label="Salvar contagem"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <div className="bg-white p-5 rounded-2xl shadow-sm border">
+                <label className="block text-sm font-medium text-gray-700">Importar ficheiro (.xlsx)</label>
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  onChange={handleFileUpload}
+                  className="mt-2 w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
+                />
+
+                {produtos.length > 0 && (
+                  <div className="mt-6">
+                    <input
+                      type="search"
+                      value={busca}
+                      onChange={(e) => setBusca(e.target.value)}
+                      placeholder="🔍 Buscar por código ou descrição"
+                      className="w-full px-4 py-3 rounded-xl border bg-gray-50 focus:ring-2 focus:ring-sky-300"
+                    />
+
+                    <div className="mt-4 overflow-auto rounded-md border">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-white sticky top-0 z-10">
+                          <tr className="text-left text-gray-600">
+                            <th className="px-3 py-3 border">Código</th>
+                            <th className="px-3 py-3 border">Descrição</th>
+                            <th className="px-3 py-3 border text-center">Sistema</th>
+                            <th className="px-3 py-3 border text-center">Real</th>
+                            <th className="px-3 py-3 border text-center">Diferença</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {produtosFiltrados.map((p, i) => {
+                            const real = Number(contagem[p.codigo]) || '';
+                            const diff = (Number(real) || 0) - (Number(p.sistema) || 0);
+                            return (
+                              <tr key={p.codigo || i} className={`transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100`}>
+                                <td className="px-3 py-3 border align-middle font-medium">{p.codigo}</td>
+                                <td className="px-3 py-3 border">{p.nome}</td>
+                                <td className="px-3 py-3 border text-center">{p.sistema}</td>
+                                <td className="px-3 py-3 border text-center">
+                                  <input
+                                    type="number"
+                                    value={real}
+                                    onChange={(e) => handleContagemChange(p.codigo, e.target.value)}
+                                    className="w-20 px-2 py-1 text-center border rounded-md"
+                                  />
+                                </td>
+                                <td className={`px-3 py-3 border text-center font-semibold ${diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                                  {diff}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {produtos.length === 0 && (
+                  <div className="mt-6 text-center text-gray-500 italic">📁 Carregue um ficheiro `.xlsx` ou selecione uma data no histórico à esquerda.</div>
+                )}
+              </div>
+            </div>
+
+            <aside className="space-y-6">
+              <div className="bg-white p-5 rounded-2xl shadow-sm border">
+                <ArmazemSelector armazem={armazem} setArmazem={setArmazem} />
+              </div>
+
+              <div className="bg-white p-4 rounded-xl shadow-sm border text-sm text-gray-600">
+                <div className="font-semibold mb-2">Dicas rápidas</div>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Use a busca para filtrar rapidamente.</li>
+                  <li>Exporte para XLSX antes de fechar o dia.</li>
+                  <li>As diferenças são destacadas em cores.</li>
+                </ul>
+              </div>
+            </aside>
+          </div>
         </div>
       </main>
     </div>
   );
 }
-
-export default App;
-
-
 
 
 

@@ -130,11 +130,11 @@ function App() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-white text-gray-800">
+    <div className="flex flex-col md:flex-row bg-white text-gray-800 min-h-screen">
       <SidebarHistorico onSelecionarData={carregarContagemPorData} />
 
-      <main className="flex-1 p-4 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 p-4 overflow-y-auto flex flex-col">
+        <div className="max-w-4xl mx-auto flex-grow">
           <h1 className="text-2xl font-bold mb-4 text-blue-600">📦 Contagem de Inventário</h1>
 
           <input

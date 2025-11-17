@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import SidebarHistorico from './components/SidebarHistorico';
-import ArmazemSelector from './components/ArmazemSelector';
+import SidebarHistorico from './SidebarHistorico';
+import ArmazemSelector from './ArmazemSelector';
 
 export default function App() {
   const [produtos, setProdutos] = useState([]);

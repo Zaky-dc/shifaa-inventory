@@ -39,11 +39,11 @@ const ArmazemSelector = ({ armazem, setArmazem }) => {
 
   return (
     <div className="mb-6">
-      <label className="block mb-2 font-semibold text-white">🏬 Selecionar Armazém</label>
+      <label className="block mb-2 font-semibold text-gray-700">🏬 Selecionar Armazém</label>
       <select
         value={armazem}
         onChange={(e) => setArmazem(e.target.value)}
-        className="w-full border px-3 py-2 rounded text-black mb-2"
+        className="w-full border px-3 py-2 rounded mb-2 text-sm"
       >
         <option value="">Escolha um armazém</option>
         {armazens.map((a, i) => (
@@ -57,11 +57,11 @@ const ArmazemSelector = ({ armazem, setArmazem }) => {
           value={novoArmazem}
           onChange={(e) => setNovoArmazem(e.target.value)}
           placeholder="Novo armazém..."
-          className="flex-1 border px-3 py-2 rounded text-black"
+          className="flex-1 border px-3 py-2 rounded text-sm"
         />
         <button
           onClick={criarArmazem}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm"
         >
           + Adicionar
         </button>

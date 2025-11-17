@@ -72,8 +72,6 @@ const SidebarHistorico = ({ onSelecionarData }) => {
 export default SidebarHistorico;
 
 
-export default SidebarHistorico;
-
 
 
 

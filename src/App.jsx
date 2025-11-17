@@ -130,12 +130,14 @@ function App() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-white text-gray-800">
+    <div className="bg-white text-gray-800 min-h-screen">
+      {/* Sidebar fixo */}
       <SidebarHistorico onSelecionarData={carregarContagemPorData} />
 
-      <main className="flex-1 p-4 overflow-y-auto flex flex-col">
-        <div className="max-w-4xl w-full mx-auto flex-grow">
-          <h1 className="text-2xl font-bold mb-4 text-blue-700">Contagem de Inventário</h1>
+      {/* Conteúdo principal deslocado */}
+      <main className="ml-64 p-4 overflow-y-auto min-h-screen">
+        <div className="max-w-4xl w-full mx-auto">
+          <h1 className="text-2xl font-bold mb-4 text-blue-700">📦 Contagem de Inventário</h1>
 
           <input
             type="file"
@@ -152,7 +154,7 @@ function App() {
                 type="text"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por código ou descrição..."
+                placeholder="🔍 Buscar por código ou descrição..."
                 className="mb-4 w-full px-3 py-2 border rounded text-sm"
               />
               <div className="overflow-x-auto max-h-[60vh] overflow-y-auto border rounded shadow-sm">
@@ -214,7 +216,7 @@ function App() {
 
           {produtos.length === 0 && (
             <div className="text-gray-500 mt-6 italic">
-             Carregue um ficheiro `.xlsx` ou selecione uma data no histórico.
+              📁 Carregue um ficheiro `.xlsx` ou selecione uma data no histórico.
             </div>
           )}
         </div>
@@ -224,6 +226,7 @@ function App() {
 }
 
 export default App;
+
 
 
 

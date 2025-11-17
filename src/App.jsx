@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import SidebarHistorico from './SidebarHistorico';
 import ArmazemSelector from './ArmazemSelector';
+import { GiHamburgerMenu } from 'react-icons/gi';
 
 export default function App() {
   const [sidebarAberto, setSidebarAberto] = useState(true);
@@ -101,50 +102,56 @@ export default function App() {
   );
 
   return (
-   <div className={`flex min-h-screen bg-gray-50 text-gray-800 transition-all duration-300
-  ${sidebarAberto ? 'pl-64' : 'pl-16'}
-  sm:pl-16
-`}>
+    <div
+      className={`
+        flex min-h-screen bg-gray-50 text-gray-800 transition-all duration-300
+        ${sidebarAberto ? 'pl-64' : 'pl-16'}
+        max-sm:pl-0
+      `}
+    >
+      {/* SIDEBAR */}
       <SidebarHistorico 
         sidebarAberto={sidebarAberto}
         setSidebarAberto={setSidebarAberto}
         onSelecionarData={(d, a) => {
-        // A Sidebar chama esta função com data e armazem
-        // Implementação opcional: buscar contagem por data
-        fetch(`${API_URL}/contagem/${d}`)
-          .then(r => r.json())
-          .then((dados) => {
-            if (!dados || dados.length === 0) return alert('Nenhuma contagem encontrada nessa data.');
-            const produtosSalvos = dados.map(it => ({ codigo: it.codigo, nome: it.nome, sistema: it.sistema }));
-            const cont = {};
-            dados.forEach(it => (cont[it.codigo] = it.real));
-            setProdutos(produtosSalvos);
-            setContagem(cont);
-            setArmazem(dados[0].armazem || '');
-          })
-          .catch(err => { console.error(err); alert('Erro ao carregar contagem.'); });
-      }}
-        
-        />
-    <header className="sm:hidden fixed top-0 left-0 right-0 h-14 bg-white shadow z-40 flex items-center px-4">
-  <button
-    onClick={() => setSidebarAberto(true)}
-    className="p-2 rounded hover:bg-gray-100"
-  >
-    <GiHamburgerMenu />
-  </button>
-  <h1 className="ml-4 text-lg font-semibold text-sky-700">Contagem de Inventário</h1>
-</header>
+          fetch(`${API_URL}/contagem/${d}`)
+            .then(r => r.json())
+            .then((dados) => {
+              if (!dados || dados.length === 0) return alert('Nenhuma contagem encontrada nessa data.');
+              const produtosSalvos = dados.map(it => ({ codigo: it.codigo, nome: it.nome, sistema: it.sistema }));
+              const cont = {};
+              dados.forEach(it => (cont[it.codigo] = it.real));
+              setProdutos(produtosSalvos);
+              setContagem(cont);
+              setArmazem(dados[0].armazem || '');
+            })
+            .catch(err => { console.error(err); alert('Erro ao carregar contagem.'); });
+        }}
+      />
 
-{/* OVERLAY FECHA A SIDEBAR */}
-{sidebarAberto && (
-  <div
-    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 sm:hidden"
-    onClick={() => setSidebarAberto(false)}
-  />
-)}
+      {/* HEADER MOBILE */}
+      <header className="sm:hidden fixed top-0 left-0 right-0 h-14 bg-white shadow z-40 flex items-center px-4">
+        <button
+          onClick={() => setSidebarAberto(true)}
+          className="p-2 rounded hover:bg-gray-100"
+        >
+          <GiHamburgerMenu />
+        </button>
+        <h1 className="ml-4 text-lg font-semibold text-sky-700">Contagem de Inventário</h1>
+      </header>
+
+      {/* OVERLAY MOBILE */}
+      {sidebarAberto && (
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 sm:hidden"
+          onClick={() => setSidebarAberto(false)}
+        />
+      )}
+
+      {/* MAIN CONTENT */}
       <main className="flex-1 p-8 pt-20 sm:pt-8">
         <div className="max-w-6xl mx-auto">
+          {/* HEADER + BOTÕES */}
           <div className="flex items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl font-semibold text-sky-700">📦 Contagem de Inventário</h1>
@@ -170,7 +177,9 @@ export default function App() {
             </div>
           </div>
 
+          {/* GRID DE CONTEÚDO */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* TABELA */}
             <div className="lg:col-span-2">
               <div className="bg-white p-5 rounded-2xl shadow-sm border">
                 <label className="block text-sm font-medium text-gray-700">Importar ficheiro (.xlsx)</label>
@@ -181,14 +190,14 @@ export default function App() {
                   className="mt-2 w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
                 />
 
-                {produtos.length > 0 && (
-                  <div className="mt-6">
+                {produtos.length > 0 ? (
+                  <>
                     <input
                       type="search"
                       value={busca}
                       onChange={(e) => setBusca(e.target.value)}
                       placeholder="🔍 Buscar por código ou descrição"
-                      className="w-full px-4 py-3 rounded-xl border bg-gray-50 focus:ring-2 focus:ring-sky-300"
+                      className="w-full px-4 py-3 rounded-xl border bg-gray-50 focus:ring-2 focus:ring-sky-300 mt-6"
                     />
 
                     <div className="mt-4 overflow-auto rounded-md border">
@@ -228,15 +237,14 @@ export default function App() {
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                )}
-
-                {produtos.length === 0 && (
+                  </>
+                ) : (
                   <div className="mt-6 text-center text-gray-500 italic">📁 Carregue um ficheiro `.xlsx` ou selecione uma data no histórico à esquerda.</div>
                 )}
               </div>
             </div>
 
+            {/* ASIDE */}
             <aside className="space-y-6">
               <div className="bg-white p-5 rounded-2xl shadow-sm border">
                 <ArmazemSelector armazem={armazem} setArmazem={setArmazem} />
@@ -256,6 +264,8 @@ export default function App() {
       </main>
     </div>
   );
+}
+
 }
 
 

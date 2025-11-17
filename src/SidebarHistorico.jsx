@@ -31,7 +31,7 @@ const SidebarHistorico = ({ onSelecionarData }) => {
   };
 
   return (
-    <aside className={`fixed top-0 left-0 h-screen z-10 transition-all duration-300 ${isOpen ? "w-64" : "w-16"} bg-white/80 backdrop-blur-md border-r shadow-md`}>
+   <aside className={`${isOpen ? "fixed top-0 left-0 h-screen w-64 z-10 bg-white/90 backdrop-blur-md border-r shadow-md" : "hidden"} transition-all duration-300`}>
       <div className="flex justify-between items-center p-4">
         {isOpen && <h2 className="text-lg font-bold text-blue-700">📁 Arquivos Recentes</h2>}
         <button onClick={() => setIsOpen(!isOpen)} className="text-2xl text-gray-700">

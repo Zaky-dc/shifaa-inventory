@@ -126,8 +126,22 @@ export default function App() {
       }}
         
         />
-
-      <main className="flex-1 p-8">
+    {sidebarAberto && (
+  <div
+    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-20 sm:hidden"
+    onClick={() => setSidebarAberto(false)}
+  />
+)}
+     <header className="sm:hidden fixed top-0 left-0 right-0 h-14 bg-white shadow z-20 flex items-center px-4">
+      <button
+        onClick={() => setSidebarAberto(true)}
+        className="p-2 rounded hover:bg-gray-100"
+      >
+        <GiHamburgerMenu />
+      </button>
+      <h1 className="ml-4 text-lg font-semibold text-sky-700">Contagem de Inventário</h1>
+    </header>
+      <main className="flex-1 p-8 pt-20 sm:pt-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between gap-4 mb-6">
             <div>

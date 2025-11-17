@@ -5,6 +5,7 @@ import SidebarHistorico from './SidebarHistorico';
 import ArmazemSelector from './ArmazemSelector';
 
 export default function App() {
+  const [sidebarAberto, setSidebarAberto] = useState(true);
   const [produtos, setProdutos] = useState([]);
   const [contagem, setContagem] = useState({});
   const [armazem, setArmazem] = useState('');
@@ -100,8 +101,14 @@ export default function App() {
   );
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-800">
-      <SidebarHistorico onSelecionarData={(d, a) => {
+   <div className={`flex min-h-screen bg-gray-50 text-gray-800 transition-all duration-300
+  ${sidebarAberto ? 'pl-64' : 'pl-16'}
+  sm:pl-16
+`}>
+      <SidebarHistorico 
+        sidebarAberto={sidebarAberto}
+        setSidebarAberto={setSidebarAberto}
+        onSelecionarData={(d, a) => {
         // A Sidebar chama esta função com data e armazem
         // Implementação opcional: buscar contagem por data
         fetch(`${API_URL}/contagem/${d}`)
@@ -116,7 +123,9 @@ export default function App() {
             setArmazem(dados[0].armazem || '');
           })
           .catch(err => { console.error(err); alert('Erro ao carregar contagem.'); });
-      }} />
+      }}
+        
+        />
 
       <main className="flex-1 p-8">
         <div className="max-w-6xl mx-auto">

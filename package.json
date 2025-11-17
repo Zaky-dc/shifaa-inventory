@@ -12,10 +12,12 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.17",
     "dotenv": "^17.2.3",
+    "file-saver": "^2.0.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.9.5",
+    "save-as": "^0.1.8",
     "tailwindcss": "^4.1.17",
     "xlsx": "^0.18.5"
   },
@@ -31,3 +33,4 @@
     "vite": "^7.2.2"
   }
 }
+

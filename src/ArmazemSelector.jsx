@@ -7,9 +7,9 @@ export default function ArmazemSelector({ armazem, setArmazem }) {
 
   useEffect(() => {
     fetch(`${API_URL}/armazens`)
-      .then((r) => r.json())
-      .then((data) => setArmazens(Array.isArray(data) ? data : []))
-      .catch((err) => console.error('Erro ao carregar armazéns:', err));
+      .then(r => r.json())
+      .then(data => setArmazens(Array.isArray(data) ? data : []))
+      .catch(err => console.error('Erro ao carregar armazéns:', err));
   }, []);
 
   const criarArmazem = async () => {
@@ -24,7 +24,7 @@ export default function ArmazemSelector({ armazem, setArmazem }) {
       });
       const data = await res.json();
       alert(data.message || 'Armazém criado com sucesso!');
-      setArmazens((prev) => [...prev, nome]);
+      setArmazens(prev => [...prev, nome]);
       setArmazem(nome);
       setNovoArmazem('');
     } catch (err) {
@@ -36,22 +36,31 @@ export default function ArmazemSelector({ armazem, setArmazem }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-700">🏬 Selecionar Armazém</label>
-      <select value={armazem} onChange={(e) => setArmazem(e.target.value)} className="mt-2 w-full border px-3 py-2 rounded-md bg-white text-sm">
+      <select
+        value={armazem}
+        onChange={e => setArmazem(e.target.value)}
+        className="mt-2 w-full border px-3 py-2 rounded-md bg-white text-sm"
+      >
         <option value="">Escolha um armazém</option>
         {armazens.map((a, i) => (
           <option key={i} value={a}>{a}</option>
         ))}
       </select>
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex gap-2 flex-col sm:flex-row">
         <input
           type="text"
           value={novoArmazem}
-          onChange={(e) => setNovoArmazem(e.target.value)}
+          onChange={e => setNovoArmazem(e.target.value)}
           placeholder="Novo armazém..."
           className="flex-1 border px-3 py-2 rounded-md text-sm"
         />
-        <button onClick={criarArmazem} className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm hover:bg-emerald-700 transition">+ Adicionar</button>
+        <button
+          onClick={criarArmazem}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm hover:bg-emerald-700 transition"
+        >
+          + Adicionar
+        </button>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { GiHamburgerMenu } from 'react-icons/gi'; // Importar o ícone de menu
 import SidebarHistorico from './SidebarHistorico';
 import ArmazemSelector from './ArmazemSelector';
 
@@ -9,6 +10,8 @@ export default function App() {
   const [contagem, setContagem] = useState({});
   const [armazem, setArmazem] = useState('');
   const [busca, setBusca] = useState('');
+  // NOVO: Estado para controlar a abertura da Sidebar em mobile
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://shifaa-inventory-backend.onrender.com';
 
@@ -101,29 +104,46 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-800">
-      <SidebarHistorico onSelecionarData={(d, a) => {
-        // A Sidebar chama esta função com data e armazem
-        // Implementação opcional: buscar contagem por data
-        fetch(`${API_URL}/contagem/${d}`)
-          .then(r => r.json())
-          .then((dados) => {
-            if (!dados || dados.length === 0) return alert('Nenhuma contagem encontrada nessa data.');
-            const produtosSalvos = dados.map(it => ({ codigo: it.codigo, nome: it.nome, sistema: it.sistema }));
-            const cont = {};
-            dados.forEach(it => (cont[it.codigo] = it.real));
-            setProdutos(produtosSalvos);
-            setContagem(cont);
-            setArmazem(dados[0].armazem || '');
-          })
-          .catch(err => { console.error(err); alert('Erro ao carregar contagem.'); });
-      }} />
+      
+      {/* Sidebar Historico (Drawer) - Recebe o estado de abertura */}
+      <SidebarHistorico 
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        onSelecionarData={(d, a) => {
+          // A Sidebar chama esta função com data e armazem
+          fetch(`${API_URL}/contagem/${d}`)
+            .then(r => r.json())
+            .then((dados) => {
+              if (!dados || dados.length === 0) return alert('Nenhuma contagem encontrada nessa data.');
+              const produtosSalvos = dados.map(it => ({ codigo: it.codigo, nome: it.nome, sistema: it.sistema }));
+              const cont = {};
+              dados.forEach(it => (cont[it.codigo] = it.real));
+              setProdutos(produtosSalvos);
+              setContagem(cont);
+              setArmazem(dados[0].armazem || '');
+            })
+            .catch(err => { console.error(err); alert('Erro ao carregar contagem.'); });
+        }} 
+      />
 
-      <main className="flex-1 p-8">
-        <div className="max-w-6xl mx-auto">
+      {/* Main Content - Adiciona margem à esquerda no desktop (md:ml-64) */}
+      <main className="flex-1 p-2 md:ml-64">
+        <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-sky-700">Contagem de Inventário</h1>
-              <p className="text-sm text-gray-500 mt-1">Importe um ficheiro .xlsx e faça a contagem rápida.</p>
+            
+            <div className="flex items-center">
+              {/* NOVO: Botão para abrir Sidebar no Mobile */}
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="md:hidden p-2 rounded-lg bg-white shadow border mr-3"
+              >
+                <GiHamburgerMenu size={20} />
+              </button>
+            
+              <div>
+                <h1 className="text-2xl font-semibold text-sky-700">Contagem de Inventário</h1>
+                <p className="text-sm text-gray-500 mt-1">Importe um ficheiro .xlsx e faça a contagem rápida.</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-3">
@@ -145,7 +165,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <div className="lg:col-span-2">
               <div className="bg-white p-5 rounded-2xl shadow-sm border">
                 <label className="block text-sm font-medium text-gray-700">Importar ficheiro (.xlsx)</label>
@@ -232,7 +252,6 @@ export default function App() {
     </div>
   );
 }
-
 
 
 

@@ -5,7 +5,7 @@ import { IoIosClose } from 'react-icons/io';
 
 export default function SidebarHistorico({ onSelecionarData, isOpen, setIsOpen }) {
   const [datas, setDatas] = useState([]);
-  const API_URL = import.meta.env.VITE_API_URL || 'https://shifaa-inventory-backend.onrender.com';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://shifaa-inventory-backend.vercel.app/api';
 
   useEffect(() => {
     fetch(`${API_URL}/datas`)

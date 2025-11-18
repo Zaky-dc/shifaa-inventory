@@ -13,7 +13,7 @@ export default function App() {
   // NOVO: Estado para controlar a abertura da Sidebar em mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'https://shifaa-inventory-backend.vercel.app/api/';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://shifaa-inventory-backend.vercel.app/api';
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];

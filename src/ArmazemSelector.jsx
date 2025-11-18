@@ -10,13 +10,13 @@ export default function ArmazemSelector({ armazem, setArmazem }) {
     fetch(`${API_URL}/armazens`)
       .then((r) => r.json())
       .then((data) => setArmazens(Array.isArray(data) ? data : []))
-      .catch((err) => console.error('Erro ao carregar armazéns:', err));
+      .catch((err) => console.error('Erro ao carregar o nome do ficheiro:', err));
   }, []);
 
   const criarArmazem = async () => {
     const nome = novoArmazem.trim();
     if (!nome) {
-      setMensagem('Digite um nome válido para o armazém.');
+      setMensagem('Digite um nome válido para o ficheiro.');
       return;
     }
 
@@ -27,13 +27,13 @@ export default function ArmazemSelector({ armazem, setArmazem }) {
         body: JSON.stringify({ nome }),
       });
       const data = await res.json();
-      setMensagem(data.message || 'Armazém criado com sucesso!');
+      setMensagem(data.message || 'Ficheiro criado com sucesso!');
       setArmazens((prev) => [...prev, nome]);
       setArmazem(nome);
       setNovoArmazem('');
     } catch (err) {
       console.error(err);
-      setMensagem('Erro ao criar armazém.');
+      setMensagem('Erro ao criar ficheiro.');
     }
 
     // Limpa mensagem após alguns segundos
@@ -42,9 +42,9 @@ export default function ArmazemSelector({ armazem, setArmazem }) {
 
   return (
     <div className="">
-     <label className="block text-sm font-semibold text-gray-700">🏬 Selecionar Armazém</label>
+     <label className="block text-sm font-semibold text-gray-700">Atribuir Nome ao Ficheiro</label>
       <select value={armazem} onChange={(e) => setArmazem(e.target.value)} className="mt-2 w-full border px-3 py-2 rounded-md bg-white text-sm">
-        <option value="">Escolha um armazém</option>
+        <option value="">Escolher Ficheiro Anterior</option>
         {armazens.map((a, i) => (
           <option key={i} value={a}>{a}</option>
         ))}
@@ -55,7 +55,7 @@ export default function ArmazemSelector({ armazem, setArmazem }) {
           type="text"
           value={novoArmazem}
           onChange={(e) => setNovoArmazem(e.target.value)}
-          placeholder="Novo armazém..."
+          placeholder="Novo Ficheiro..."
           className="flex-1 border px-3 py-2 rounded-md text-sm"
         />
         <button onClick={criarArmazem} className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm hover:bg-emerald-700 transition">+ Adicionar</button>

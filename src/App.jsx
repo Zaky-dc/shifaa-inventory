@@ -141,7 +141,7 @@ export default function App() {
               </button>
             
               <div>
-                <h1 className="text-2xl font-semibold text-sky-700">Contagem de Inventário</h1>
+                <h1 className="text-2xl font-semibold text-sky-700">Contagem Online</h1>
                 <p className="text-sm text-gray-500 mt-1">Importe um ficheiro .xlsx e faça a contagem rápida.</p>
               </div>
             </div>

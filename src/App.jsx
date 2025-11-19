@@ -118,10 +118,16 @@ export default function App() {
 
     return (
         <div className="flex min-h-screen bg-gray-50 text-gray-800">
-            
+            {isLoading && (
+      <div className="fixed inset-0 bg-gray-100/70 flex flex-col items-center justify-center z-50">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-blue-600 font-semibold">Carregando contagem...</p>
+      </div>
+    )}
             <SidebarHistorico
                 isOpen={isSidebarOpen}
                 setIsOpen={setIsSidebarOpen}
+                setIsLoading(true);
                 onSelecionarData={(d, a) => {
                     fetch(`${API_URL}/contagem?data=${d}&armazem=${a}`)
                         .then((r) => r.json())
@@ -142,6 +148,8 @@ export default function App() {
                         .catch((err) => {
                             console.error(err);
                             alert("Erro ao carregar contagem.");
+                        }).finally(()=>{
+                            setIsLoading(false);
                         });
                 }}
             />

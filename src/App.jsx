@@ -127,8 +127,8 @@ export default function App() {
             <SidebarHistorico
                 isOpen={isSidebarOpen}
                 setIsOpen={setIsSidebarOpen}
-                setIsLoading(true);
                 onSelecionarData={(d, a) => {
+                     setIsLoading(true);
                     fetch(`${API_URL}/contagem?data=${d}&armazem=${a}`)
                         .then((r) => r.json())
                         .then((dados) => {

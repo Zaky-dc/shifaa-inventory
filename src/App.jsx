@@ -30,12 +30,12 @@ export default function App() {
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet).map((item) => ({
                     codigo: String(
-                        item.Cod ?? item.Código ?? item.COD ?? item.codigo ?? ""
-                    ).trim(),
+                      item.Cod ?? item.Código ?? item.COD ?? item.codigo ?? item.Codigo ?? ""
+                        ).trim(),
                     nome: String(
-                        item.Desc ?? item.Descrição ?? item.Desc ?? item.nome ?? ""
-                    ).trim(),
-                    sistema: Number(item.sis ?? item.SIS ?? 0) || 0,
+                      item.Desc ?? item.Descrição ?? item.desc ?? item.nome ?? item.Nome ?? ""
+                        ).trim(),
+                    sistema: Number(item.sis ?? item.SIS ?? item.Sistema ?? item.sistema ?? 0) || 0,
                 }));
 
                 setProdutos(json.filter((p) => p.codigo));

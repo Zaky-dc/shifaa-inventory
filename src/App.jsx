@@ -200,6 +200,9 @@ export default function App() {
                                 <label className="block text-sm font-medium text-gray-700">
                                     Importar ficheiro (.xlsx)
                                 </label>
+                                <p className="text-xs text-gray-500 mt-1">
+  O ficheiro deve conter os cabeçalhos <strong>Codigo</strong>, <strong>Descricao</strong> e <strong>Sistema</strong>.
+</p>
                                 <input
                                     type="file"
                                     accept=".xlsx"

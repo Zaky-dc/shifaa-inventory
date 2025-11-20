@@ -7,10 +7,13 @@ import SidebarHistorico from "./SidebarHistorico";
 export default function App() {
     const [produtos, setProdutos] = useState([]);
     const [contagem, setContagem] = useState({});
-    const [armazem, setArmazem] = useState(""); // armazem = nome do ficheiro
+    const [armazem, setArmazem] = useState(""); 
     const [busca, setBusca] = useState("");
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false); 
+
+    // 1. NOVO ESTADO PARA O FILTRO
+    const [filtroStatus, setFiltroStatus] = useState("todos");
 
     const API_URL = "https://shifaa-inventory-backend.vercel.app/api";
 
@@ -18,7 +21,6 @@ export default function App() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // CAPTURA O NOME DO FICHEIRO E DEFINE COMO ARMÁZEM (removendo a extensão)
         const fileName = file.name.replace(/\.[^/.]+$/, ""); 
         setArmazem(fileName); 
 
@@ -112,23 +114,48 @@ export default function App() {
         );
     };
 
-    const produtosFiltrados = produtos.filter((p) =>
-        `${p.codigo} ${p.nome}`.toLowerCase().includes(busca.toLowerCase())
-    );
+    // 2. LÓGICA DE FILTRAGEM ATUALIZADA
+    const produtosFiltrados = produtos.filter((p) => {
+        // Filtro de Texto (Busca)
+        const matchTexto = `${p.codigo} ${p.nome}`.toLowerCase().includes(busca.toLowerCase());
+
+        // Preparar valores para filtros lógicos
+        const valorRealInput = contagem[p.codigo];
+        const real = Number(valorRealInput) || 0;
+        const diferenca = real - p.sistema;
+        const foiContado = valorRealInput !== undefined && valorRealInput !== "";
+
+        // Filtro de Status
+        let matchStatus = true;
+        if (filtroStatus === "diferencas") {
+            matchStatus = diferenca !== 0;
+        } else if (filtroStatus === "sobras") {
+            matchStatus = diferenca > 0;
+        } else if (filtroStatus === "perdas") {
+            matchStatus = diferenca < 0;
+        } else if (filtroStatus === "pendentes") {
+            matchStatus = !foiContado; // Mostra o que ainda não foi digitado
+        } else if (filtroStatus === "iguais") {
+            matchStatus = diferenca === 0 && foiContado;
+        }
+
+        return matchTexto && matchStatus;
+    });
 
     return (
         <div className="flex min-h-screen bg-gray-50 text-gray-800">
             {isLoading && (
-      <div className="fixed inset-0 bg-gray-100/70 flex flex-col items-center justify-center z-50">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-blue-600 font-semibold">Carregando contagem...</p>
-      </div>
-    )}
+                <div className="fixed inset-0 bg-gray-100/70 flex flex-col items-center justify-center z-50">
+                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="mt-4 text-blue-600 font-semibold">Carregando contagem...</p>
+                </div>
+            )}
+            
             <SidebarHistorico
                 isOpen={isSidebarOpen}
                 setIsOpen={setIsSidebarOpen}
                 onSelecionarData={(d, a) => {
-                     setIsLoading(true);
+                      setIsLoading(true);
                     fetch(`${API_URL}/contagem?data=${d}&armazem=${a}`)
                         .then((r) => r.json())
                         .then((dados) => {
@@ -154,15 +181,13 @@ export default function App() {
                 }}
             />
 
-            <main className="flex-1 p-2 **md:ml-64**">
+            <main className="flex-1 p-2 md:ml-64">
                 <div className="max-w-3xl mx-auto">
                     <div className="flex items-center justify-between gap-4 mb-6">
                         <div className="flex items-center">
-                            
-                            {/* O BOTÃO QUE QUERIAS: Visível SÓ em ecrãs pequenos (md:hidden) */}
                             <button
                                 onClick={() => setIsSidebarOpen(true)}
-                                className="**md:hidden** p-2 rounded-lg bg-white shadow border mr-3"
+                                className="md:hidden p-2 rounded-lg bg-white shadow border mr-3"
                             >
                                 <GiHamburgerMenu size={20} />
                             </button>
@@ -179,7 +204,6 @@ export default function App() {
                             <button
                                 onClick={exportarParaExcel}
                                 className="hidden sm:inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:brightness-95 transition"
-                                aria-label="Exportar para Excel"
                             >
                                 Exportar XLSX
                             </button>
@@ -187,7 +211,6 @@ export default function App() {
                             <button
                                 onClick={salvarContagem}
                                 className="bg-sky-600 text-white px-4 py-2 rounded-lg shadow hover:brightness-95 transition"
-                                aria-label="Salvar contagem"
                             >
                                 Salvar
                             </button>
@@ -201,8 +224,8 @@ export default function App() {
                                     Importar ficheiro (.xlsx)
                                 </label>
                                 <p className="text-xs text-gray-500 mt-1">
-  O ficheiro deve conter os cabeçalhos <strong>Codigo</strong>, <strong>Descricao</strong> e <strong>Sistema</strong>.
-</p>
+                                  O ficheiro deve conter os cabeçalhos <strong>Codigo</strong>, <strong>Descricao</strong> e <strong>Sistema</strong>.
+                                </p>
                                 <input
                                     type="file"
                                     accept=".xlsx"
@@ -210,60 +233,87 @@ export default function App() {
                                     className="mt-2 w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
                                 />
                                 
-                                {/* Exibe o nome do armazém (ficheiro) */}
                                 {armazem && (
                                     <div className="mt-4 p-3 bg-blue-50 text-blue-700 rounded-md text-sm font-medium">
-                                        Ficheiro atual (nome da contagem): **{armazem}**
+                                        Ficheiro atual: <strong>{armazem}</strong>
                                     </div>
                                 )}
 
                                 {produtos.length > 0 && (
                                     <div className="mt-6">
-                                        <input
-                                            type="search"
-                                            value={busca}
-                                            onChange={(e) => setBusca(e.target.value)}
-                                            placeholder="🔍 Buscar por código ou descrição"
-                                            className="w-full px-4 py-3 rounded-xl border bg-gray-50 focus:ring-2 focus:ring-sky-300"
-                                        />
+                                        {/* 3. ÁREA DE FILTROS VISUAIS */}
+                                        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                                            <input
+                                                type="search"
+                                                value={busca}
+                                                onChange={(e) => setBusca(e.target.value)}
+                                                placeholder="🔍 Buscar código/nome..."
+                                                className="flex-1 px-4 py-2 rounded-xl border bg-gray-50 focus:ring-2 focus:ring-sky-300"
+                                            />
+                                            
+                                            <select 
+                                                value={filtroStatus}
+                                                onChange={(e) => setFiltroStatus(e.target.value)}
+                                                className="px-4 py-2 rounded-xl border bg-white focus:ring-2 focus:ring-sky-300 cursor-pointer"
+                                            >
+                                                <option value="todos">📋 Todos</option>
+                                                <option value="pendentes">⏳ Pendentes (Não contados)</option>
+                                                <option value="diferencas">⚠️ Com Diferença</option>
+                                                <option value="sobras">📈 Sobras (Positivo)</option>
+                                                <option value="perdas">📉 Perdas (Negativo)</option>
+                                                <option value="iguais">✅ Batendo (Zero Dif.)</option>
+                                            </select>
+                                        </div>
 
-<div className="mt-4 overflow-auto rounded-md border">
-                      <table className="min-w-full text-sm">
-                        <thead className="bg-white sticky top-0 z-10">
-                          <tr className="text-left text-gray-600">
-                            <th className="px-3 py-3 border">Código</th>
-                            <th className="px-3 py-3 border">Descrição</th>
-                            <th className="px-3 py-3 border text-center">Sistema</th>
-                            <th className="px-3 py-3 border text-center">Real</th>
-                            <th className="px-3 py-3 border text-center">Diferença</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {produtosFiltrados.map((p, i) => {
-                            const real = Number(contagem[p.codigo]) || '';
-                            const diff = (Number(real) || 0) - (Number(p.sistema) || 0);
-                            return (
-                              <tr key={p.codigo || i} className={`transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100`}>
-                                <td className="px-3 py-3 border align-middle font-medium">{p.codigo}</td>
-                                <td className="px-3 py-3 border">{p.nome}</td>
-                                <td className="px-3 py-3 border text-center">{p.sistema}</td>
-                                <td className="px-3 py-3 border text-center">
-                                  <input
-                                    type="number"
-                                    value={real}
-                                    onChange={(e) => handleContagemChange(p.codigo, e.target.value)}
-                                    className="w-20 px-2 py-1 text-center border rounded-md"
-                                  />
-                                </td>
-                                <td className={`px-3 py-3 border text-center font-semibold ${diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-gray-700'}`}>
-                                  {diff}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                                        <div className="mt-4 overflow-auto rounded-md border max-h-[600px]">
+                                            <table className="min-w-full text-sm relative">
+                                                <thead className="bg-white sticky top-0 z-10 shadow-sm">
+                                                    <tr className="text-left text-gray-600">
+                                                        <th className="px-3 py-3 border bg-gray-50">Código</th>
+                                                        <th className="px-3 py-3 border bg-gray-50">Descrição</th>
+                                                        <th className="px-3 py-3 border bg-gray-50 text-center w-20">Sis.</th>
+                                                        <th className="px-3 py-3 border bg-gray-50 text-center w-24">Real</th>
+                                                        <th className="px-3 py-3 border bg-gray-50 text-center w-20">Dif.</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {produtosFiltrados.map((p, i) => {
+                                                        const real = Number(contagem[p.codigo]) || '';
+                                                        const diff = (Number(real) || 0) - (Number(p.sistema) || 0);
+                                                        
+                                                        // Cor da linha baseada na diferença
+                                                        let diffClass = "text-gray-700";
+                                                        if(diff > 0) diffClass = "text-green-600 font-bold bg-green-50";
+                                                        if(diff < 0) diffClass = "text-red-600 font-bold bg-red-50";
+
+                                                        return (
+                                                            <tr key={p.codigo || i} className={`transition hover:bg-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                                                                <td className="px-3 py-2 border align-middle font-medium">{p.codigo}</td>
+                                                                <td className="px-3 py-2 border">{p.nome}</td>
+                                                                <td className="px-3 py-2 border text-center">{p.sistema}</td>
+                                                                <td className="px-3 py-2 border text-center">
+                                                                    <input
+                                                                        type="number"
+                                                                        value={real}
+                                                                        onChange={(e) => handleContagemChange(p.codigo, e.target.value)}
+                                                                        className="w-full px-2 py-1 text-center border rounded-md focus:ring-2 focus:ring-blue-400 outline-none"
+                                                                        placeholder="-"
+                                                                    />
+                                                                </td>
+                                                                <td className={`px-3 py-2 border text-center ${diffClass}`}>
+                                                                    {diff > 0 ? `+${diff}` : diff}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                            {produtosFiltrados.length === 0 && (
+                                                <div className="p-8 text-center text-gray-500">
+                                                    Nenhum produto encontrado com este filtro.
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 
@@ -280,9 +330,9 @@ export default function App() {
                             <div className="bg-white p-4 rounded-xl shadow-sm border text-sm text-gray-600">
                                 <div className="font-semibold mb-2">Dicas rápidas</div>
                                 <ul className="list-disc list-inside space-y-1">
-                                    <li>Use a busca para filtrar rapidamente.</li>
-                                    <li>Exporte para XLSX antes de fechar o dia.</li>
-                                    <li>As diferenças são destacadas em cores.</li>
+                                    <li>Use os filtros para achar erros rápidos.</li>
+                                    <li>"Pendentes" mostra o que falta contar.</li>
+                                    <li>Exporte para XLSX antes de sair.</li>
                                 </ul>
                             </div>
                         </aside>
@@ -292,4 +342,3 @@ export default function App() {
         </div>
     );
 }
-

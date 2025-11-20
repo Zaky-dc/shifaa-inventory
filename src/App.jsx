@@ -12,7 +12,7 @@ export default function App() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false); 
 
-    // 1. NOVO ESTADO PARA O FILTRO
+    // NOVO ESTADO PARA O FILTRO
     const [filtroStatus, setFiltroStatus] = useState("todos");
 
     const API_URL = "https://shifaa-inventory-backend.vercel.app/api";
@@ -114,18 +114,14 @@ export default function App() {
         );
     };
 
-    // 2. LÓGICA DE FILTRAGEM ATUALIZADA
+    // LÓGICA DE FILTRAGEM
     const produtosFiltrados = produtos.filter((p) => {
-        // Filtro de Texto (Busca)
         const matchTexto = `${p.codigo} ${p.nome}`.toLowerCase().includes(busca.toLowerCase());
-
-        // Preparar valores para filtros lógicos
         const valorRealInput = contagem[p.codigo];
         const real = Number(valorRealInput) || 0;
         const diferenca = real - p.sistema;
         const foiContado = valorRealInput !== undefined && valorRealInput !== "";
 
-        // Filtro de Status
         let matchStatus = true;
         if (filtroStatus === "diferencas") {
             matchStatus = diferenca !== 0;
@@ -134,7 +130,7 @@ export default function App() {
         } else if (filtroStatus === "perdas") {
             matchStatus = diferenca < 0;
         } else if (filtroStatus === "pendentes") {
-            matchStatus = !foiContado; // Mostra o que ainda não foi digitado
+            matchStatus = !foiContado; 
         } else if (filtroStatus === "iguais") {
             matchStatus = diferenca === 0 && foiContado;
         }
@@ -185,9 +181,11 @@ export default function App() {
                 <div className="max-w-3xl mx-auto">
                     <div className="flex items-center justify-between gap-4 mb-6">
                         <div className="flex items-center">
+                            
+                            {/* BOTÃO RESTAURADO PARA TODAS AS TELAS (removi o md:hidden) */}
                             <button
                                 onClick={() => setIsSidebarOpen(true)}
-                                className="md:hidden p-2 rounded-lg bg-white shadow border mr-3"
+                                className="p-2 rounded-lg bg-white shadow border mr-3 text-gray-600 hover:bg-gray-50 transition"
                             >
                                 <GiHamburgerMenu size={20} />
                             </button>
@@ -241,7 +239,7 @@ export default function App() {
 
                                 {produtos.length > 0 && (
                                     <div className="mt-6">
-                                        {/* 3. ÁREA DE FILTROS VISUAIS */}
+                                        {/* ÁREA DE FILTROS */}
                                         <div className="flex flex-col sm:flex-row gap-3 mb-4">
                                             <input
                                                 type="search"
@@ -257,11 +255,11 @@ export default function App() {
                                                 className="px-4 py-2 rounded-xl border bg-white focus:ring-2 focus:ring-sky-300 cursor-pointer"
                                             >
                                                 <option value="todos">📋 Todos</option>
-                                                <option value="pendentes">⏳ Pendentes (Não contados)</option>
-                                                <option value="diferencas">⚠️ Com Diferença</option>
-                                                <option value="sobras">📈 Sobras (Positivo)</option>
-                                                <option value="perdas">📉 Perdas (Negativo)</option>
-                                                <option value="iguais">✅ Batendo (Zero Dif.)</option>
+                                                <option value="pendentes">⏳ Pendentes</option>
+                                                <option value="diferencas">⚠️ Diferenças</option>
+                                                <option value="sobras">📈 Sobras (+)</option>
+                                                <option value="perdas">📉 Perdas (-)</option>
+                                                <option value="iguais">✅ Batendo</option>
                                             </select>
                                         </div>
 
@@ -281,7 +279,6 @@ export default function App() {
                                                         const real = Number(contagem[p.codigo]) || '';
                                                         const diff = (Number(real) || 0) - (Number(p.sistema) || 0);
                                                         
-                                                        // Cor da linha baseada na diferença
                                                         let diffClass = "text-gray-700";
                                                         if(diff > 0) diffClass = "text-green-600 font-bold bg-green-50";
                                                         if(diff < 0) diffClass = "text-red-600 font-bold bg-red-50";

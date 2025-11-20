@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { GiHamburgerMenu } from "react-icons/gi";
 import SidebarHistorico from "./SidebarHistorico";
-// Importei o FaSpinner para o loading e mantive os outros
 import { MdCloudUpload, MdSave, MdFileDownload, MdSearch } from "react-icons/md";
 import { FaSpinner } from "react-icons/fa"; 
 
@@ -12,9 +11,30 @@ export default function App() {
   const [contagem, setContagem] = useState({});
   const [armazem, setArmazem] = useState("");
   const [busca, setBusca] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState("todos");
+
+  // 1. STATE DA SIDEBAR (Começa aberto se for tela grande, fechado se for pequena)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+      if (typeof window !== 'undefined') {
+          return window.innerWidth >= 768; // 768px é o padrão 'md' do Tailwind
+      }
+      return false;
+  });
+
+  // Ajusta sidebar automaticamente se redimensionar a janela (opcional, mas bom para UX)
+  useEffect(() => {
+      const handleResize = () => {
+          if (window.innerWidth >= 768) {
+             // Opcional: Se quiseres que force a abertura ao aumentar a tela
+             // setIsSidebarOpen(true); 
+          } else {
+             setIsSidebarOpen(false);
+          }
+      };
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const API_URL = "https://shifaa-inventory-backend.vercel.app/api";
 
@@ -54,7 +74,10 @@ export default function App() {
     setIsLoading(true);
     const hoje = new Date().toISOString().split("T")[0];
     const payload = produtos.map((p) => {
-      const real = Number(contagem[p.codigo]) || 0;
+      // Converte para número apenas na hora de salvar/calcular
+      const valorDigitado = contagem[p.codigo];
+      const real = (valorDigitado === "" || valorDigitado === undefined) ? 0 : Number(valorDigitado);
+      
       return {
         codigo: p.codigo,
         nome: p.nome,
@@ -86,13 +109,17 @@ export default function App() {
 
   const exportarParaExcel = () => {
     if (!produtos.length) return alert("Sem dados.");
-    const dados = produtos.map((p) => ({
-      Código: p.codigo,
-      Descrição: p.nome,
-      Sistema: p.sistema,
-      Real: Number(contagem[p.codigo]) || 0,
-      Diferença: (Number(contagem[p.codigo]) || 0) - p.sistema,
-    }));
+    const dados = produtos.map((p) => {
+        const valorDigitado = contagem[p.codigo];
+        const real = (valorDigitado === "" || valorDigitado === undefined) ? 0 : Number(valorDigitado);
+        return {
+            Código: p.codigo,
+            Descrição: p.nome,
+            Sistema: p.sistema,
+            Real: real,
+            Diferença: real - p.sistema,
+        };
+    });
     const ws = XLSX.utils.json_to_sheet(dados);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Contagem");
@@ -105,10 +132,14 @@ export default function App() {
 
   const produtosFiltrados = produtos.filter((p) => {
     const matchTexto = `${p.codigo} ${p.nome}`.toLowerCase().includes(busca.toLowerCase());
-    const valorRealInput = contagem[p.codigo];
-    const real = Number(valorRealInput) || 0;
-    const diferenca = real - p.sistema;
-    const foiContado = valorRealInput !== undefined && valorRealInput !== "";
+    
+    const valorInput = contagem[p.codigo]; // Pega o valor bruto (string ou undefined)
+    // Se for undefined ou vazio, conta como 0 para o cálculo da diferença
+    const realNumerico = (valorInput === undefined || valorInput === "") ? 0 : Number(valorInput);
+    const diferenca = realNumerico - p.sistema;
+    
+    // Verifica se foi contado (tem algo digitado, inclusive "0")
+    const foiContado = valorInput !== undefined && valorInput !== "";
 
     let matchStatus = true;
     if (filtroStatus === "diferencas") matchStatus = diferenca !== 0;
@@ -121,8 +152,7 @@ export default function App() {
   });
 
   return (
-    <div className="flex min-h-screen bg-gray-100 font-sans text-gray-800">
-      {/* SPINNER ATUALIZADO (Com react-icons) */}
+    <div className="flex min-h-screen bg-gray-100 font-sans text-gray-800 overflow-x-hidden">
       {isLoading && (
         <div className="fixed inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-50 transition-all">
           <FaSpinner className="animate-spin text-5xl text-indigo-600 mb-4" />
@@ -143,6 +173,7 @@ export default function App() {
               if (!dados || dados.length === 0) return alert("Vazio.");
               setProdutos(dados.map((it) => ({ codigo: it.codigo, nome: it.nome, sistema: it.sistema })));
               const cont = {};
+              // Ao carregar do banco, garantimos que o zero venha como número ou string
               dados.forEach((it) => (cont[it.codigo] = it.real));
               setContagem(cont);
               setArmazem(dados[0].armazem || "");
@@ -152,14 +183,17 @@ export default function App() {
         }}
       />
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col md:ml-64 transition-all duration-300 ease-in-out h-screen overflow-hidden">
+      {/* Main Content - Margem dinâmica baseada na Sidebar */}
+      <main 
+        className={`flex-1 flex flex-col transition-all duration-300 ease-in-out h-screen overflow-hidden 
+        ${isSidebarOpen ? 'md:ml-72' : 'md:ml-0'}`} 
+      >
         
-        {/* Header Compacto no Mobile */}
         <header className="bg-white shadow-md shrink-0 px-4 py-3 md:px-6 md:py-4 flex items-center justify-between z-20">
           <div className="flex items-center gap-3">
+            {/* Botão Toggle Sidebar */}
             <button
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition active:scale-95"
             >
               <GiHamburgerMenu size={22} />
@@ -186,15 +220,11 @@ export default function App() {
           </div>
         </header>
 
-        {/* Área de Conteúdo com Scroll Independente */}
         <div className="flex-1 overflow-y-auto p-2 md:p-6 w-full">
-          
           <div className="max-w-5xl mx-auto w-full flex flex-col gap-4">
             
-            {/* Card Principal - Padding reduzido no mobile (p-3) */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
               
-              {/* Header do Card */}
               <div className="p-3 md:p-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
                  <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
                     <label className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-indigo-100 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-medium text-sm w-full md:w-auto justify-center active:scale-95">
@@ -211,11 +241,9 @@ export default function App() {
                  </div>
               </div>
 
-              {/* Corpo do Card (Filtros e Tabela) */}
               {produtos.length > 0 ? (
                 <div className="p-3 md:p-6">
                   
-                  {/* Filtros */}
                   <div className="flex flex-col md:flex-row gap-3 mb-4">
                     <div className="relative flex-1">
                       <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -243,17 +271,12 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Tabela com Scroll Horizontal e Vertical */}
                   <div className="rounded-lg border border-gray-200 shadow-inner relative">
-                    {/* Define altura máxima para scroll vertical (max-h-[55vh] ou [60vh])
-                        overflow-auto ativa scroll X e Y automaticamente quando necessário
-                    */}
                     <div className="overflow-auto max-h-[55vh] md:max-h-[600px]"> 
                       <table className="w-full text-sm text-left border-collapse">
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                           <tr>
                             <th className="px-3 py-3 font-bold whitespace-nowrap bg-gray-50">Cód.</th>
-                            {/* Descrição agora tem largura fixa mínima para não quebrar feio */}
                             <th className="px-3 py-3 font-bold whitespace-nowrap bg-gray-50 min-w-[150px]">Descrição</th>
                             <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Sis.</th>
                             <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Real</th>
@@ -262,14 +285,23 @@ export default function App() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                           {produtosFiltrados.map((p, i) => {
-                            const real = Number(contagem[p.codigo]) || "";
-                            const diff = (Number(real) || 0) - (Number(p.sistema) || 0);
+                            
+                            // 2. CORREÇÃO DO ZERO:
+                            // Pegamos o valor do estado. Se for undefined, retorna vazio "". 
+                            // Se for "0" (string) ou 0 (número), retorna ele mesmo.
+                            const valorNoInput = contagem[p.codigo] !== undefined ? contagem[p.codigo] : "";
+                            
+                            // Para a matemática, convertemos. Se for vazio, conta como 0.
+                            const realNumerico = valorNoInput === "" ? 0 : Number(valorNoInput);
+                            
+                            const diff = realNumerico - (Number(p.sistema) || 0);
                             
                             let rowBg = i % 2 === 0 ? "bg-white" : "bg-gray-50/50";
                             let diffColor = "text-gray-400";
                             let diffBg = "";
 
-                            if (real !== "") {
+                            // Só colore se tiver algo digitado (ou carregado)
+                            if (valorNoInput !== "") {
                                if (diff > 0) { diffColor = "text-green-600 font-bold"; diffBg = "bg-green-50"; }
                                else if (diff < 0) { diffColor = "text-red-600 font-bold"; diffBg = "bg-red-50"; }
                                else { diffColor = "text-gray-300"; diffBg = "bg-gray-50"; }
@@ -278,17 +310,14 @@ export default function App() {
                             return (
                               <tr key={p.codigo} className={`${rowBg} hover:bg-indigo-50/40 transition duration-150`}>
                                 <td className="px-3 py-2 font-medium text-gray-700 text-xs md:text-sm align-middle">{p.codigo}</td>
-                                
-                                {/* Coluna Descrição: truncate no mobile (max-w-[120px]), normal no desktop */}
                                 <td className="px-3 py-2 text-gray-600 text-xs md:text-sm align-middle max-w-[120px] md:max-w-none truncate md:whitespace-normal" title={p.nome}>
                                   {p.nome}
                                 </td>
-                                
                                 <td className="px-2 py-2 text-center font-semibold text-gray-500 align-middle">{p.sistema}</td>
                                 <td className="px-2 py-2 text-center align-middle">
                                   <input
                                     type="number"
-                                    value={real}
+                                    value={valorNoInput} // Aqui usa a variável tratada
                                     onChange={(e) => handleContagemChange(p.codigo, e.target.value)}
                                     className="w-16 text-center p-1 border border-gray-300 rounded focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white outline-none font-medium text-sm"
                                     placeholder="-"
@@ -322,7 +351,6 @@ export default function App() {
               )}
             </div>
 
-            {/* FOOTER - Agora dentro do fluxo principal, mas no fundo */}
             <footer className="mt-4 pb-4 text-center md:text-right border-t border-gray-200 pt-4">
                 <div className="text-xs md:text-sm text-gray-500 flex flex-col md:flex-row items-center justify-center md:justify-end gap-1">
                     <span>Desenvolvido por</span>

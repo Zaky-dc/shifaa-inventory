@@ -16,24 +16,27 @@ export default function App() {
 
   // 1. STATE DA SIDEBAR (Começa aberto se for tela grande, fechado se for pequena)
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-      if (typeof window !== 'undefined') {
-          return window.innerWidth >= 768; // 768px é o padrão 'md' do Tailwind
-      }
-      return false;
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768; // 768px é o padrão 'md' do Tailwind
+    }
+    return false;
   });
+
+  // NOVO: State e Variável para o Popup de Long Press
+  const [popupData, setPopupData] = useState(null); // { nome: 'Nome Completo', y: 0 }
+  let pressTimer = null; // Variável para controlar o tempo de clique
+
+  const LONG_PRESS_DELAY = 600; // 600ms para considerar clique prolongado
 
   // Ajusta sidebar automaticamente se redimensionar a janela (opcional, mas bom para UX)
   useEffect(() => {
-      const handleResize = () => {
-          if (window.innerWidth >= 768) {
-             // Opcional: Se quiseres que force a abertura ao aumentar a tela
-             // setIsSidebarOpen(true); 
-          } else {
-             setIsSidebarOpen(false);
-          }
-      };
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const API_URL = "https://shifaa-inventory-backend.vercel.app/api";
@@ -74,7 +77,6 @@ export default function App() {
     setIsLoading(true);
     const hoje = new Date().toISOString().split("T")[0];
     const payload = produtos.map((p) => {
-      // Converte para número apenas na hora de salvar/calcular
       const valorDigitado = contagem[p.codigo];
       const real = (valorDigitado === "" || valorDigitado === undefined) ? 0 : Number(valorDigitado);
       
@@ -110,15 +112,15 @@ export default function App() {
   const exportarParaExcel = () => {
     if (!produtos.length) return alert("Sem dados.");
     const dados = produtos.map((p) => {
-        const valorDigitado = contagem[p.codigo];
-        const real = (valorDigitado === "" || valorDigitado === undefined) ? 0 : Number(valorDigitado);
-        return {
-            Código: p.codigo,
-            Descrição: p.nome,
-            Sistema: p.sistema,
-            Real: real,
-            Diferença: real - p.sistema,
-        };
+      const valorDigitado = contagem[p.codigo];
+      const real = (valorDigitado === "" || valorDigitado === undefined) ? 0 : Number(valorDigitado);
+      return {
+        Código: p.codigo,
+        Descrição: p.nome,
+        Sistema: p.sistema,
+        Real: real,
+        Diferença: real - p.sistema,
+      };
     });
     const ws = XLSX.utils.json_to_sheet(dados);
     const wb = XLSX.utils.book_new();
@@ -134,11 +136,9 @@ export default function App() {
     const matchTexto = `${p.codigo} ${p.nome}`.toLowerCase().includes(busca.toLowerCase());
     
     const valorInput = contagem[p.codigo]; // Pega o valor bruto (string ou undefined)
-    // Se for undefined ou vazio, conta como 0 para o cálculo da diferença
     const realNumerico = (valorInput === undefined || valorInput === "") ? 0 : Number(valorInput);
     const diferenca = realNumerico - p.sistema;
     
-    // Verifica se foi contado (tem algo digitado, inclusive "0")
     const foiContado = valorInput !== undefined && valorInput !== "";
 
     let matchStatus = true;
@@ -150,6 +150,33 @@ export default function App() {
 
     return matchTexto && matchStatus;
   });
+
+  // NOVO: Função para começar a contagem do tempo de toque
+  const handleTouchStart = (e, nomeProduto) => {
+    // Só ativa em telas menores que 768px (mobile)
+    if (window.innerWidth >= 768) return; 
+
+    clearTimeout(pressTimer);
+    const touchY = e.touches[0].clientY; // Pega a posição vertical do toque
+
+    pressTimer = setTimeout(() => {
+      // Abre o popup se o toque durar mais que LONG_PRESS_DELAY
+      setPopupData({
+        nome: nomeProduto,
+        y: touchY 
+      });
+    }, LONG_PRESS_DELAY);
+  };
+
+  // NOVO: Função para limpar o timer (cancela o long press se o dedo for levantado)
+  const handleTouchEnd = () => {
+    clearTimeout(pressTimer);
+  };
+  
+  // NOVO: Função para fechar o popup
+  const closePopup = () => {
+    setPopupData(null);
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-100 font-sans text-gray-800 overflow-x-hidden">
@@ -173,7 +200,6 @@ export default function App() {
               if (!dados || dados.length === 0) return alert("Vazio.");
               setProdutos(dados.map((it) => ({ codigo: it.codigo, nome: it.nome, sistema: it.sistema })));
               const cont = {};
-              // Ao carregar do banco, garantimos que o zero venha como número ou string
               dados.forEach((it) => (cont[it.codigo] = it.real));
               setContagem(cont);
               setArmazem(dados[0].armazem || "");
@@ -286,21 +312,14 @@ export default function App() {
                         <tbody className="divide-y divide-gray-100">
                           {produtosFiltrados.map((p, i) => {
                             
-                            // 2. CORREÇÃO DO ZERO:
-                            // Pegamos o valor do estado. Se for undefined, retorna vazio "". 
-                            // Se for "0" (string) ou 0 (número), retorna ele mesmo.
                             const valorNoInput = contagem[p.codigo] !== undefined ? contagem[p.codigo] : "";
-                            
-                            // Para a matemática, convertemos. Se for vazio, conta como 0.
                             const realNumerico = valorNoInput === "" ? 0 : Number(valorNoInput);
-                            
                             const diff = realNumerico - (Number(p.sistema) || 0);
                             
                             let rowBg = i % 2 === 0 ? "bg-white" : "bg-gray-50/50";
                             let diffColor = "text-gray-400";
                             let diffBg = "";
 
-                            // Só colore se tiver algo digitado (ou carregado)
                             if (valorNoInput !== "") {
                                if (diff > 0) { diffColor = "text-green-600 font-bold"; diffBg = "bg-green-50"; }
                                else if (diff < 0) { diffColor = "text-red-600 font-bold"; diffBg = "bg-red-50"; }
@@ -310,14 +329,23 @@ export default function App() {
                             return (
                               <tr key={p.codigo} className={`${rowBg} hover:bg-indigo-50/40 transition duration-150`}>
                                 <td className="px-3 py-2 font-medium text-gray-700 text-xs md:text-sm align-middle">{p.codigo}</td>
-                                <td className="px-3 py-2 text-gray-600 text-xs md:text-sm align-middle max-w-[120px] md:max-w-none truncate md:whitespace-normal" title={p.nome}>
+                                
+                                {/* NOVO: Célula com a lógica de Long Press */}
+                                <td 
+                                  className="px-3 py-2 text-gray-600 text-xs md:text-sm align-middle max-w-[120px] md:max-w-none truncate md:whitespace-normal" 
+                                  title={p.nome}
+                                  onTouchStart={(e) => handleTouchStart(e, p.nome)}
+                                  onTouchEnd={handleTouchEnd}
+                                  onTouchCancel={handleTouchEnd}
+                                >
                                   {p.nome}
                                 </td>
+                                
                                 <td className="px-2 py-2 text-center font-semibold text-gray-500 align-middle">{p.sistema}</td>
                                 <td className="px-2 py-2 text-center align-middle">
                                   <input
                                     type="number"
-                                    value={valorNoInput} // Aqui usa a variável tratada
+                                    value={valorNoInput}
                                     onChange={(e) => handleContagemChange(p.codigo, e.target.value)}
                                     className="w-16 text-center p-1 border border-gray-300 rounded focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white outline-none font-medium text-sm"
                                     placeholder="-"
@@ -365,6 +393,34 @@ export default function App() {
           </div>
         </div>
       </main>
+      
+      {/* NOVO: POPUP/MODAL DE DESCRIÇÃO (SÓ VISÍVEL EM TELAS PEQUENAS) */}
+      {popupData && (
+        <div 
+            // Fundo escurecido, fixo na tela. Z-index alto para ficar por cima de tudo.
+            // max-md:block hidden -> Garante que SÓ APARECE em telas < 768px (mobile)
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 max-md:block hidden"
+            onClick={closePopup} // Fecha se clicar fora
+        >
+            {/* O CARD DO POPUP */}
+            <div 
+                className="absolute p-4 mx-4 w-[calc(100%-2rem)] rounded-lg shadow-2xl bg-white border-2 border-indigo-500 transform -translate-y-1/2"
+                // Posiciona o popup perto do toque (usa a coordenada Y do toque)
+                style={{ top: popupData.y > 0 ? `${popupData.y}px` : '50%' }}
+                onClick={(e) => e.stopPropagation()} // Evita fechar o popup se clicar dentro
+            >
+                <h4 className="text-sm font-bold text-indigo-700 mb-1">Descrição Completa:</h4>
+                <p className="text-base font-semibold text-gray-800 break-words">{popupData.nome}</p>
+                <button 
+                    onClick={closePopup} 
+                    className="absolute top-1 right-2 text-gray-500 hover:text-indigo-600 transition text-xl font-bold"
+                >
+                    &times;
+                </button>
+            </div>
+        </div>
+      )}
+
     </div>
   );
 }

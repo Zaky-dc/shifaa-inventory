@@ -244,7 +244,7 @@ export default function App() {
                         className="hidden" 
                       />
                     </label>
-                    {armazem && <span className="text-xs font-bold uppercase bg-indigo-100 px-3 py-1 rounded-full">{armazem}</span>}
+                    {armazem && <span className="w-full md:w-auto text-center px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold uppercase rounded-full truncate">{armazem}</span>}
                  </div>
               </div>
 
@@ -258,33 +258,36 @@ export default function App() {
                         value={busca}
                         onChange={(e) => setBusca(e.target.value)}
                         placeholder="Buscar..."
-                        className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border focus:ring-2 focus:ring-indigo-200 outline-none"
+                        className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none"
                       />
                     </div>
+
+                    <div className="relative">
                     <select
                         value={filtroStatus}
                         onChange={(e) => setFiltroStatus(e.target.value)}
-                        className="px-3 py-2 text-sm rounded-lg border bg-white outline-none"
+                         className="w-full md:w-auto px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none"
                     >
                         <option value="todos">Todos (A-Z)</option>
                         <option value="pendentes">Pendentes</option>
                         <option value="diferencas">Com Diferença</option>
                     </select>
+                    </div>
                   </div>
 
-                  <div className="rounded-lg border overflow-hidden">
-                    <div className="overflow-auto max-h-[60vh]"> 
-                      <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-100 sticky top-0 z-10">
+                  <div className="rounded-lg border border-gray-200 shadow-inner relative">
+                    <div className="overflow-auto max-h-[55vh] md:max-h-[600px]"> 
+                      <table className="w-full text-sm text-left border-collapse">
+                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                           <tr>
-                            <th className="px-3 py-3 font-bold">Cód.</th>
-                            <th className="px-3 py-3 font-bold">Descrição</th>
-                            <th className="px-2 py-3 text-center font-bold">Sis.</th>
-                            <th className="px-2 py-3 text-center font-bold">Real</th>
-                            <th className="px-2 py-3 text-center font-bold">Dif.</th>
+                            <th className="px-3 py-3 font-bold whitespace-nowrap bg-gray-50">Cód.</th>
+                            <th className="px-3 py-3 font-bold whitespace-nowrap bg-gray-50 min-w-[150px]">Descrição</th>
+                            <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Sis.</th>
+                            <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Real</th>
+                            <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Dif.</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y">
+                        <tbody className="divide-y divide-gray-100">
                           {produtosFiltrados.map((p, i) => {
                             const valorNoInput = contagem[p.codigo] !== undefined ? contagem[p.codigo] : "";
                             const realNumerico = valorNoInput === "" ? 0 : Number(valorNoInput);
@@ -293,11 +296,11 @@ export default function App() {
                             const diffColor = valorNoInput !== "" ? (diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-gray-400") : "text-gray-400";
 
                             return (
-                              <tr key={p.codigo} className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-indigo-50/50`}>
-                                <td className="px-3 py-2 text-xs md:text-sm">{p.codigo}</td>
-                                <td className="px-3 py-2 text-xs md:text-sm truncate max-w-[150px] md:max-w-none">{p.nome}</td>
-                                <td className="px-2 py-2 text-center font-semibold">{p.sistema}</td>
-                                <td className="px-2 py-2 text-center">
+                              <tr key={p.codigo} className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-indigo-50/40 transition duration-150`}>
+                                <td className="px-3 py-2 font-medium text-gray-700 text-xs md:text-sm align-middle">{p.codigo}</td>
+                                <td className="px-3 py-2 text-gray-600 text-xs md:text-sm align-middle max-w-[120px] md:max-w-none truncate md:whitespace-normal">{p.nome}</td>
+                                <td className="px-2 py-2 text-center font-semibold text-gray-500 align-middle">{p.sistema}</td>
+                                <td className="px-2 py-2 text-center align-middle">
                                   <input
                                     type="number"
                                     value={valorNoInput}
@@ -318,15 +321,42 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div className="p-12 text-center text-gray-400">
-                  <MdCloudUpload size={40} className="mx-auto mb-2 opacity-20" />
-                  <p>Carregue um ficheiro .xlsx ou .xls para começar.</p>
+                 <div className="p-8 md:p-12 text-center">
+
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-50 text-indigo-300 mb-3">
+
+                     <MdCloudUpload size={28} />
+
+                  </div>
+
+                  <h3 className="text-base font-medium text-gray-900">Nenhum ficheiro</h3>
+
+                  <p className="text-gray-500 mt-1 text-sm">Carregue um ficheiro Excel para começar.</p>
+
                 </div>
+
               )}
+
             </div>
             
-            <footer className="mt-4 text-center text-xs text-gray-400">
-               Desenvolvido por <span className="text-indigo-600 font-bold">Zakir Abdul Magide</span>
+            <footer className="mt-4 pb-4 text-center md:text-right border-t border-gray-200 pt-4">
+
+                <div className="text-xs md:text-sm text-gray-500 flex flex-col md:flex-row items-center justify-center md:justify-end gap-1">
+
+                    <span>Desenvolvido por</span>
+
+                    <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+
+                        Zakir Abdul Magide
+
+                    </span>
+
+                    <span className="hidden md:inline">-</span>
+
+                    <span>Todos os direitos reservados.</span>
+
+                </div>
+
             </footer>
           </div>
         </div>

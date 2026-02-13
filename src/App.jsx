@@ -31,7 +31,7 @@ export default function App() {
 
   const API_URL = "https://shifaa-inventory-backend.vercel.app/api";
 
-  // --- FUNÇÃO DE ORDENAÇÃO REUTILIZÁVEL ---
+  // Função de ordenação AZ
   const ordenarAZ = (lista) => {
     return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
   };
@@ -39,28 +39,37 @@ export default function App() {
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Remove a extensão do nome do ficheiro (.xlsx ou .xls)
     const fileName = file.name.replace(/\.[^/.]+$/, "");
     setArmazem(fileName);
+    
+    setIsLoading(true); // Ativa o spinner durante a leitura
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
         const data = new Uint8Array(evt.target.result);
+        // O XLSX.read deteta automaticamente se é 97-2003 (.xls) ou moderno (.xlsx)
         const workbook = XLSX.read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        
         const json = XLSX.utils.sheet_to_json(sheet).map((item) => ({
           codigo: String(item.Cod ?? item.Código ?? item.COD ?? item.codigo ?? item.Codigo ?? "").trim(),
           nome: String(item.Desc ?? item.Descrição ?? item.desc ?? item.nome ?? item.Nome ?? "").trim(),
           sistema: Number(item.sis ?? item.SIS ?? item.Sistema ?? item.sistema ?? 0) || 0,
         }));
 
-        // Filtra códigos vazios e ORDENA DE A a Z
         const filtradosEOrdenados = ordenarAZ(json.filter((p) => p.codigo));
         
         setProdutos(filtradosEOrdenados);
         setContagem({});
       } catch (err) {
-        console.error("Erro:", err);
-        alert("Formato inválido.");
+        console.error("Erro na leitura:", err);
+        alert("Erro ao ler o ficheiro. Verifique se não está protegido ou corrompido.");
+      } finally {
+        setIsLoading(false);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -150,9 +159,9 @@ export default function App() {
   return (
     <div className="flex min-h-screen bg-gray-100 font-sans text-gray-800 overflow-x-hidden">
       {isLoading && (
-        <div className="fixed inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-50 transition-all">
+        <div className="fixed inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
           <FaSpinner className="animate-spin text-5xl text-indigo-600 mb-4" />
-          <p className="text-indigo-800 font-bold tracking-wide animate-pulse text-lg">A processar dados...</p>
+          <p className="text-indigo-800 font-bold tracking-wide animate-pulse">A processar dados...</p>
         </div>
       )}
 
@@ -165,63 +174,58 @@ export default function App() {
             .then((r) => r.json())
             .then((dados) => {
               if (!dados || dados.length === 0) return alert("Vazio.");
-              
-              // Mapeia e já ORDENA de A a Z ao carregar do banco
               const listaTratada = dados.map((it) => ({ 
                 codigo: it.codigo, 
                 nome: it.nome, 
                 sistema: it.sistema 
               }));
-
               setProdutos(ordenarAZ(listaTratada));
-
               const cont = {};
               dados.forEach((it) => (cont[it.codigo] = it.real));
               setContagem(cont);
               setArmazem(dados[0].armazem || "");
             })
-            .catch((err) => alert("Erro ao carregar."))
+            .catch(() => alert("Erro ao carregar."))
             .finally(() => setIsLoading(false));
         }}
       />
 
-      <main className={`flex-1 flex flex-col transition-all duration-300 ease-in-out h-screen overflow-hidden ${isSidebarOpen ? 'md:ml-72' : 'md:ml-0'}`}>
-        <header className="bg-white shadow-md shrink-0 px-4 py-3 md:px-6 md:py-4 flex items-center justify-between z-20">
+      <main className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'md:ml-72' : 'md:ml-0'}`}>
+        <header className="bg-white shadow-md px-4 py-3 md:px-6 flex items-center justify-between z-20">
           <div className="flex items-center gap-3">
-            <button onClick={() => setIsOpen(!isSidebarOpen)} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition active:scale-95">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition">
               <GiHamburgerMenu size={22} />
             </button>
-            <div>
-              <h1 className="text-lg md:text-xl font-bold text-gray-800 tracking-tight leading-tight">Inventário</h1>
-              <p className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:block">Shifaa Inventory</p>
-            </div>
+            <h1 className="text-lg md:text-xl font-bold">Inventário</h1>
           </div>
           
           <div className="flex gap-2">
-            <button onClick={exportarParaExcel} className="hidden sm:flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg shadow hover:bg-green-700 transition text-xs md:text-sm font-medium uppercase">
+            <button onClick={exportarParaExcel} className="hidden sm:flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium uppercase shadow">
               <MdFileDownload size={18} /> <span>Excel</span>
             </button>
-            <button onClick={salvarContagem} className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-lg shadow hover:bg-indigo-700 transition active:scale-95 text-xs md:text-sm font-medium uppercase">
+            <button onClick={salvarContagem} className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium uppercase shadow">
               <MdSave size={18} /> <span>Salvar</span>
             </button>
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-2 md:p-6 w-full">
-          <div className="max-w-5xl mx-auto w-full flex flex-col gap-4">
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-              <div className="p-3 md:p-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                 <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
-                    <label className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-indigo-100 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-medium text-sm w-full md:w-auto justify-center active:scale-95">
+          <div className="max-w-5xl mx-auto flex flex-col gap-4">
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="p-3 md:p-6 bg-gray-50 border-b">
+                 <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+                    {/* ALTERADO: accept=".xlsx, .xls" e o MIME type para Excel antigo */}
+                    <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition font-medium text-sm">
                       <MdCloudUpload size={20} />
-                      <span>Carregar .XLSX</span>
-                      <input type="file" accept=".xlsx" onChange={handleFileUpload} className="hidden" />
+                      <span>Carregar Excel (.xlsx / .xls)</span>
+                      <input 
+                        type="file" 
+                        accept=".xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+                        onChange={handleFileUpload} 
+                        className="hidden" 
+                      />
                     </label>
-                    {armazem && (
-                      <span className="w-full md:w-auto text-center px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold uppercase rounded-full truncate">
-                        {armazem}
-                      </span>
-                    )}
+                    {armazem && <span className="text-xs font-bold uppercase bg-indigo-100 px-3 py-1 rounded-full">{armazem}</span>}
                  </div>
               </div>
 
@@ -234,72 +238,57 @@ export default function App() {
                         type="search"
                         value={busca}
                         onChange={(e) => setBusca(e.target.value)}
-                        placeholder="Buscar por nome ou código..."
-                        className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none"
+                        placeholder="Buscar..."
+                        className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border focus:ring-2 focus:ring-indigo-200 outline-none"
                       />
                     </div>
-                    <div className="relative">
-                      <select
+                    <select
                         value={filtroStatus}
                         onChange={(e) => setFiltroStatus(e.target.value)}
-                        className="w-full md:w-auto px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none"
-                      >
+                        className="px-3 py-2 text-sm rounded-lg border bg-white outline-none"
+                    >
                         <option value="todos">Todos (A-Z)</option>
                         <option value="pendentes">Pendentes</option>
                         <option value="diferencas">Com Diferença</option>
-                        <option value="sobras">Sobras (+)</option>
-                        <option value="perdas">Perdas (-)</option>
-                        <option value="iguais">Batendo (OK)</option>
-                      </select>
-                    </div>
+                    </select>
                   </div>
 
-                  <div className="rounded-lg border border-gray-200 shadow-inner relative">
-                    <div className="overflow-auto max-h-[55vh] md:max-h-[600px]"> 
-                      <table className="w-full text-sm text-left border-collapse">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                  <div className="rounded-lg border overflow-hidden">
+                    <div className="overflow-auto max-h-[60vh]"> 
+                      <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-gray-500 uppercase bg-gray-100 sticky top-0 z-10">
                           <tr>
-                            <th className="px-3 py-3 font-bold whitespace-nowrap bg-gray-50">Cód.</th>
-                            <th className="px-3 py-3 font-bold whitespace-nowrap bg-gray-50 min-w-[150px]">Descrição</th>
-                            <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Sis.</th>
-                            <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Real</th>
-                            <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Dif.</th>
+                            <th className="px-3 py-3 font-bold">Cód.</th>
+                            <th className="px-3 py-3 font-bold">Descrição</th>
+                            <th className="px-2 py-3 text-center font-bold">Sis.</th>
+                            <th className="px-2 py-3 text-center font-bold">Real</th>
+                            <th className="px-2 py-3 text-center font-bold">Dif.</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y">
                           {produtosFiltrados.map((p, i) => {
                             const valorNoInput = contagem[p.codigo] !== undefined ? contagem[p.codigo] : "";
                             const realNumerico = valorNoInput === "" ? 0 : Number(valorNoInput);
-                            const diff = realNumerico - (Number(p.sistema) || 0);
+                            const diff = realNumerico - p.sistema;
                             
-                            let rowBg = i % 2 === 0 ? "bg-white" : "bg-gray-50/50";
-                            let diffColor = "text-gray-400";
-                            let diffBg = "";
-
-                            if (valorNoInput !== "") {
-                               if (diff > 0) { diffColor = "text-green-600 font-bold"; diffBg = "bg-green-50"; }
-                               else if (diff < 0) { diffColor = "text-red-600 font-bold"; diffBg = "bg-red-50"; }
-                               else { diffColor = "text-gray-300"; diffBg = "bg-gray-50"; }
-                            }
+                            const diffColor = valorNoInput !== "" ? (diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-gray-400") : "text-gray-400";
 
                             return (
-                              <tr key={p.codigo} className={`${rowBg} hover:bg-indigo-50/40 transition duration-150`}>
-                                <td className="px-3 py-2 font-medium text-gray-700 text-xs md:text-sm align-middle">{p.codigo}</td>
-                                <td className="px-3 py-2 text-gray-600 text-xs md:text-sm align-middle max-w-[120px] md:max-w-none truncate md:whitespace-normal" title={p.nome}>
-                                  {p.nome}
-                                </td>
-                                <td className="px-2 py-2 text-center font-semibold text-gray-500 align-middle">{p.sistema}</td>
-                                <td className="px-2 py-2 text-center align-middle">
+                              <tr key={p.codigo} className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-indigo-50/50`}>
+                                <td className="px-3 py-2 text-xs md:text-sm">{p.codigo}</td>
+                                <td className="px-3 py-2 text-xs md:text-sm truncate max-w-[150px] md:max-w-none">{p.nome}</td>
+                                <td className="px-2 py-2 text-center font-semibold">{p.sistema}</td>
+                                <td className="px-2 py-2 text-center">
                                   <input
                                     type="number"
                                     value={valorNoInput}
                                     onChange={(e) => handleContagemChange(p.codigo, e.target.value)}
-                                    className="w-16 text-center p-1 border border-gray-300 rounded focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white outline-none font-medium text-sm"
+                                    className="w-16 text-center border rounded text-sm p-1"
                                     placeholder="-"
                                   />
                                 </td>
-                                <td className={`px-2 py-2 text-center align-middle ${diffBg}`}>
-                                  <span className={`${diffColor} text-xs md:text-sm`}>{diff > 0 ? `+${diff}` : diff}</span>
+                                <td className="px-2 py-2 text-center font-bold">
+                                  <span className={diffColor}>{diff > 0 ? `+${diff}` : diff}</span>
                                 </td>
                               </tr>
                             );
@@ -310,25 +299,15 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div className="p-8 md:p-12 text-center">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-50 text-indigo-300 mb-3">
-                     <MdCloudUpload size={28} />
-                  </div>
-                  <h3 className="text-base font-medium text-gray-900">Nenhum ficheiro</h3>
-                  <p className="text-gray-500 mt-1 text-sm">Carregue um ficheiro Excel para começar.</p>
+                <div className="p-12 text-center text-gray-400">
+                  <MdCloudUpload size={40} className="mx-auto mb-2 opacity-20" />
+                  <p>Carregue um ficheiro .xlsx ou .xls para começar.</p>
                 </div>
               )}
             </div>
-
-            <footer className="mt-4 pb-4 text-center md:text-right border-t border-gray-200 pt-4">
-                <div className="text-xs md:text-sm text-gray-500 flex flex-col md:flex-row items-center justify-center md:justify-end gap-1">
-                    <span>Desenvolvido por</span>
-                    <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                        Zakir Abdul Magide
-                    </span>
-                    <span className="hidden md:inline">-</span>
-                    <span>Todos os direitos reservados.</span>
-                </div>
+            
+            <footer className="mt-4 text-center text-xs text-gray-400">
+               Desenvolvido por <span className="text-indigo-600 font-bold">Zakir Abdul Magide</span>
             </footer>
           </div>
         </div>

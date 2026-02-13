@@ -56,9 +56,9 @@ export default function App() {
         const sheet = workbook.Sheets[sheetName];
         
         const json = XLSX.utils.sheet_to_json(sheet).map((item) => ({
-          codigo: String(item.Cod ?? item.Código ?? item.COD ?? item.codigo ?? item.Codigo ?? "").trim(),
+          codigo: String(item.Cod ?? item.Cód.?? item.Código ?? item.COD ?? item.codigo ?? item.Codigo ?? "").trim(),
           nome: String(item.Desc ?? item.Descrição ?? item.desc ?? item.nome ?? item.Nome ?? "").trim(),
-          sistema: Number(item.sis ?? item.SIS ?? item.Sistema ?? item.sistema ?? 0) || 0,
+          sistema: Number(item.sis ?? item.SIS ?? item.Sistema ?? item.sys?? item.system?? item.Sys?? item.System?? item.sistema ?? 0) || 0,
         }));
 
         const filtradosEOrdenados = ordenarAZ(json.filter((p) => p.codigo));

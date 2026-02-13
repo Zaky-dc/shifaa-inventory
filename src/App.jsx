@@ -40,34 +40,53 @@ export default function App() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Remove a extensão do nome do ficheiro (.xlsx ou .xls)
     const fileName = file.name.replace(/\.[^/.]+$/, "");
     setArmazem(fileName);
     
-    setIsLoading(true); // Ativa o spinner durante a leitura
+    setIsLoading(true);
 
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
         const data = new Uint8Array(evt.target.result);
-        // O XLSX.read deteta automaticamente se é 97-2003 (.xls) ou moderno (.xlsx)
         const workbook = XLSX.read(data, { type: "array" });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         
-        const json = XLSX.utils.sheet_to_json(sheet).map((item) => ({
-          codigo: String(item.Cod ?? item.Cód.?? item.Código ?? item.COD ?? item.codigo ?? item.Codigo ?? "").trim(),
-          nome: String(item.Desc ?? item.Descrição ?? item.desc ?? item.nome ?? item.Nome ?? "").trim(),
-          sistema: Number(item.sis ?? item.SIS ?? item.Sistema ?? item.sys?? item.system?? item.Sys?? item.System?? item.sistema ?? 0) || 0,
-        }));
+        const json = XLSX.utils.sheet_to_json(sheet).map((item) => {
+          // Log para debug (pode remover depois) - ajuda a ver como o Excel está a ler as colunas
+          // console.log("Colunas lidas:", Object.keys(item));
 
-        const filtradosEOrdenados = ordenarAZ(json.filter((p) => p.codigo));
+          return {
+            // Mapeamento exato para "Cód." e variações
+            codigo: String(
+              item["Cód."] ?? item["Cod."] ?? item.Cod ?? item.Cód ?? item.Código ?? item.codigo ?? ""
+            ).trim(),
+
+            // Mapeamento exato para "Descrição" e variações
+            nome: String(
+              item["Descrição"] ?? item.Descricao ?? item.Desc ?? item.desc ?? item.nome ?? ""
+            ).trim(),
+
+            // Mapeamento exato para "Sis." e variações
+            sistema: Number(
+              item["Sis."] ?? item.Sis ?? item.SIS ?? item.Sistema ?? item.sistema ?? 0
+            ) || 0,
+          };
+        });
+
+        // Filtra apenas os que têm código e ordena de A a Z
+        const filtradosEOrdenados = ordenarAZ(json.filter((p) => p.codigo !== ""));
         
+        if (filtradosEOrdenados.length === 0) {
+          alert("Aviso: Nenhum dado foi extraído. Verifique se os cabeçalhos do Excel são: Cód., Descrição, Sis.");
+        }
+
         setProdutos(filtradosEOrdenados);
         setContagem({});
       } catch (err) {
         console.error("Erro na leitura:", err);
-        alert("Erro ao ler o ficheiro. Verifique se não está protegido ou corrompido.");
+        alert("Erro ao ler o ficheiro.");
       } finally {
         setIsLoading(false);
       }

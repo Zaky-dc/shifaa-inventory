@@ -36,7 +36,7 @@ export default function App() {
     return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
   };
 
-  const handleFileUpload = (e) => {
+const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -54,32 +54,34 @@ export default function App() {
         const sheet = workbook.Sheets[sheetName];
         
         const json = XLSX.utils.sheet_to_json(sheet).map((item) => {
-          // Log para debug (pode remover depois) - ajuda a ver como o Excel está a ler as colunas
-          // console.log("Colunas lidas:", Object.keys(item));
-
           return {
-            // Mapeamento exato para "Cód." e variações
+            // Mapeamento para Código
             codigo: String(
               item["Cód."] ?? item["Cod."] ?? item.Cod ?? item.Cód ?? item.Código ?? item.codigo ?? ""
             ).trim(),
 
-            // Mapeamento exato para "Descrição" e variações
+            // Mapeamento para Descrição
             nome: String(
-              item["Descrição"] ?? item.Descricao ?? item.Desc ?? item.desc ?? item.nome ?? ""
+              item["Descrição"] ?? item.Descricao ?? item.Desc ?? item.desc ?? item.nome ?? item.Nome ?? ""
             ).trim(),
 
-            // Mapeamento exato para "Sis." e variações
+            // Mapeamento para Sistema (Incluindo "Existência")
             sistema: Number(
-              item["Sis."] ?? item.Sis ?? item.SIS ?? item.Sistema ?? item.sistema ?? 0
+              item["Sis."] ?? 
+              item["Existência"] ?? 
+              item.Existencia ?? 
+              item.Sis ?? 
+              item.Sistema ?? 
+              item.sistema ?? 0
             ) || 0,
           };
         });
 
-        // Filtra apenas os que têm código e ordena de A a Z
+        // Filtra apenas os que têm código preenchido e ordena de A a Z
         const filtradosEOrdenados = ordenarAZ(json.filter((p) => p.codigo !== ""));
         
         if (filtradosEOrdenados.length === 0) {
-          alert("Aviso: Nenhum dado foi extraído. Verifique se os cabeçalhos do Excel são: Cód., Descrição, Sis.");
+          alert("Aviso: Nenhum dado foi extraído. Verifique se as colunas estão corretas (Cód., Descrição, Sis./Existência).");
         }
 
         setProdutos(filtradosEOrdenados);

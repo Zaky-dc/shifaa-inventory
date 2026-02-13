@@ -230,11 +230,11 @@ export default function App() {
 
         <div className="flex-1 overflow-y-auto p-2 md:p-6 w-full">
           <div className="max-w-5xl mx-auto flex flex-col gap-4">
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              <div className="p-3 md:p-6 bg-gray-50 border-b">
-                 <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+              <div className="p-3 md:p-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                 <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
                     {/* ALTERADO: accept=".xlsx, .xls" e o MIME type para Excel antigo */}
-                    <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition font-medium text-sm">
+                    <label className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-indigo-100 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-medium text-sm w-full md:w-auto justify-center active:scale-95">
                       <MdCloudUpload size={20} />
                       <span>Carregar Excel (.xlsx / .xls)</span>
                       <input 

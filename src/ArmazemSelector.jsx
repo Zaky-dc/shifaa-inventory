@@ -5,8 +5,7 @@ export default function ArmazemSelector({ armazem, setArmazem }) {
   const [novoArmazem, setNovoArmazem] = useState("");
   const [mensagem, setMensagem] = useState("");
   const API_URL =
-    import.meta.env.VITE_API_URL ||
-    "https://shifaa-inventory-backend.vercel.app/api";
+    import.meta.env.VITE_API_URL || "https://shifaa-inventory-backend.vercel.app/api";
 
   useEffect(() => {
     fetch(`${API_URL}/armazens`)

@@ -13,6 +13,7 @@ export default function App() {
   const [busca, setBusca] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [dataSelecionada, setDataSelecionada] = useState("");
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -29,20 +30,20 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const API_URL = "https://shifaa-inventory-backend.vercel.app/api";
+  const API_URL = import.meta.env.VITE_API_URL || "https://shifaa-inventory-backend.vercel.app/api";
 
   // Função de ordenação AZ
   const ordenarAZ = (lista) => {
     return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
   };
 
-const handleFileUpload = (e) => {
+  const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const fileName = file.name.replace(/\.[^/.]+$/, "");
     setArmazem(fileName);
-    
+
     setIsLoading(true);
 
     const reader = new FileReader();
@@ -52,7 +53,7 @@ const handleFileUpload = (e) => {
         const workbook = XLSX.read(data, { type: "array" });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        
+
         const json = XLSX.utils.sheet_to_json(sheet).map((item) => {
           return {
             // Mapeamento para Código
@@ -67,11 +68,11 @@ const handleFileUpload = (e) => {
 
             // Mapeamento para Sistema (Incluindo "Existência")
             sistema: Number(
-              item["Sis."] ?? 
-              item["Existência"] ?? 
-              item.Existencia ?? 
-              item.Sis ?? 
-              item.Sistema ?? 
+              item["Sis."] ??
+              item["Existência"] ??
+              item.Existencia ??
+              item.Sis ??
+              item.Sistema ??
               item.sistema ?? 0
             ) || 0,
           };
@@ -79,13 +80,14 @@ const handleFileUpload = (e) => {
 
         // Filtra apenas os que têm código preenchido e ordena de A a Z
         const filtradosEOrdenados = ordenarAZ(json.filter((p) => p.codigo !== ""));
-        
+
         if (filtradosEOrdenados.length === 0) {
           alert("Aviso: Nenhum dado foi extraído. Verifique se as colunas estão corretas (Cód., Descrição, Sis./Existência).");
         }
 
         setProdutos(filtradosEOrdenados);
         setContagem({});
+        setDataSelecionada(new Date().toISOString().split("T")[0]);
       } catch (err) {
         console.error("Erro na leitura:", err);
         alert("Erro ao ler o ficheiro.");
@@ -104,7 +106,7 @@ const handleFileUpload = (e) => {
     if (!armazem) return alert("Defina o nome do arquivo antes de salvar.");
     if (produtos.length === 0) return alert("Sem produtos.");
     setIsLoading(true);
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = dataSelecionada || new Date().toISOString().split("T")[0];
     const payload = produtos.map((p) => {
       const valorDigitado = contagem[p.codigo];
       const real = (valorDigitado === "" || valorDigitado === undefined) ? 0 : Number(valorDigitado);
@@ -118,6 +120,11 @@ const handleFileUpload = (e) => {
         armazem,
       };
     });
+
+    if (payload.length === 0) {
+      setIsLoading(false);
+      return alert("Nenhum produto foi contado. Digite pelo menos um valor antes de salvar.");
+    }
     try {
       const res = await fetch(`${API_URL}/contagem`, {
         method: "POST",
@@ -140,15 +147,15 @@ const handleFileUpload = (e) => {
   const exportarParaExcel = () => {
     if (!produtos.length) return alert("Sem dados.");
     const dados = produtos.map((p) => {
-        const valorDigitado = contagem[p.codigo];
-        const real = (valorDigitado === "" || valorDigitado === undefined) ? 0 : Number(valorDigitado);
-        return {
-            Código: p.codigo,
-            Descrição: p.nome,
-            Sistema: p.sistema,
-            Real: real,
-            Diferença: real - p.sistema,
-        };
+      const valorDigitado = contagem[p.codigo];
+      const real = (valorDigitado === "" || valorDigitado === undefined) ? 0 : Number(valorDigitado);
+      return {
+        Código: p.codigo,
+        Descrição: p.nome,
+        Sistema: p.sistema,
+        Real: real,
+        Diferença: real - p.sistema,
+      };
     });
     const ws = XLSX.utils.json_to_sheet(dados);
     const wb = XLSX.utils.book_new();
@@ -195,16 +202,17 @@ const handleFileUpload = (e) => {
             .then((r) => r.json())
             .then((dados) => {
               if (!dados || dados.length === 0) return alert("Vazio.");
-              const listaTratada = dados.map((it) => ({ 
-                codigo: it.codigo, 
-                nome: it.nome, 
-                sistema: it.sistema 
+              const listaTratada = dados.map((it) => ({
+                codigo: it.codigo,
+                nome: it.nome,
+                sistema: it.sistema
               }));
               setProdutos(ordenarAZ(listaTratada));
               const cont = {};
               dados.forEach((it) => (cont[it.codigo] = it.real));
               setContagem(cont);
               setArmazem(dados[0].armazem || "");
+              setDataSelecionada(d);
             })
             .catch(() => alert("Erro ao carregar."))
             .finally(() => setIsLoading(false));
@@ -217,9 +225,16 @@ const handleFileUpload = (e) => {
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition">
               <GiHamburgerMenu size={22} />
             </button>
-            <h1 className="text-lg md:text-xl font-bold">Inventário</h1>
+            <div className="flex flex-col">
+              <h1 className="text-lg md:text-xl font-bold leading-tight">Inventário</h1>
+              {dataSelecionada && (
+                <span className="text-xs text-indigo-600 font-semibold uppercase tracking-wide">
+                  Edição: {dataSelecionada === new Date().toISOString().split("T")[0] ? "Hoje" : new Date(dataSelecionada).toLocaleDateString()}
+                </span>
+              )}
+            </div>
           </div>
-          
+
           <div className="flex gap-2">
             <button onClick={exportarParaExcel} className="hidden sm:flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium uppercase shadow">
               <MdFileDownload size={18} /> <span>Excel</span>
@@ -234,20 +249,20 @@ const handleFileUpload = (e) => {
           <div className="max-w-5xl mx-auto flex flex-col gap-4">
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
               <div className="p-3 md:p-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                 <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
-                    {/* ALTERADO: accept=".xlsx, .xls" e o MIME type para Excel antigo */}
-                    <label className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-indigo-100 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-medium text-sm w-full md:w-auto justify-center active:scale-95">
-                      <MdCloudUpload size={20} />
-                      <span>Carregar Excel (.xlsx / .xls)</span>
-                      <input 
-                        type="file" 
-                        accept=".xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
-                        onChange={handleFileUpload} 
-                        className="hidden" 
-                      />
-                    </label>
-                    {armazem && <span className="w-full md:w-auto text-center px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold uppercase rounded-full truncate">{armazem}</span>}
-                 </div>
+                <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
+                  {/* ALTERADO: accept=".xlsx, .xls" e o MIME type para Excel antigo */}
+                  <label className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-indigo-100 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-medium text-sm w-full md:w-auto justify-center active:scale-95">
+                    <MdCloudUpload size={20} />
+                    <span>Carregar Excel (.xlsx / .xls)</span>
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  {armazem && <span className="w-full md:w-auto text-center px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold uppercase rounded-full truncate">{armazem}</span>}
+                </div>
               </div>
 
               {produtos.length > 0 ? (
@@ -265,20 +280,20 @@ const handleFileUpload = (e) => {
                     </div>
 
                     <div className="relative">
-                    <select
+                      <select
                         value={filtroStatus}
                         onChange={(e) => setFiltroStatus(e.target.value)}
-                         className="w-full md:w-auto px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none"
-                    >
+                        className="w-full md:w-auto px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none"
+                      >
                         <option value="todos">Todos (A-Z)</option>
                         <option value="pendentes">Pendentes</option>
                         <option value="diferencas">Com Diferença</option>
-                    </select>
+                      </select>
                     </div>
                   </div>
 
                   <div className="rounded-lg border border-gray-200 shadow-inner relative">
-                    <div className="overflow-auto max-h-[55vh] md:max-h-[600px]"> 
+                    <div className="overflow-auto max-h-[55vh] md:max-h-[600px]">
                       <table className="w-full text-sm text-left border-collapse">
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                           <tr>
@@ -294,7 +309,7 @@ const handleFileUpload = (e) => {
                             const valorNoInput = contagem[p.codigo] !== undefined ? contagem[p.codigo] : "";
                             const realNumerico = valorNoInput === "" ? 0 : Number(valorNoInput);
                             const diff = realNumerico - p.sistema;
-                            
+
                             const diffColor = valorNoInput !== "" ? (diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-gray-400") : "text-gray-400";
 
                             return (
@@ -323,11 +338,11 @@ const handleFileUpload = (e) => {
                   </div>
                 </div>
               ) : (
-                 <div className="p-8 md:p-12 text-center">
+                <div className="p-8 md:p-12 text-center">
 
                   <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-50 text-indigo-300 mb-3">
 
-                     <MdCloudUpload size={28} />
+                    <MdCloudUpload size={28} />
 
                   </div>
 
@@ -340,24 +355,24 @@ const handleFileUpload = (e) => {
               )}
 
             </div>
-            
+
             <footer className="mt-4 pb-4 text-center md:text-right border-t border-gray-200 pt-4">
 
-                <div className="text-xs md:text-sm text-gray-500 flex flex-col md:flex-row items-center justify-center md:justify-end gap-1">
+              <div className="text-xs md:text-sm text-gray-500 flex flex-col md:flex-row items-center justify-center md:justify-end gap-1">
 
-                    <span>Desenvolvido por</span>
+                <span>Desenvolvido por</span>
 
-                    <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
 
-                        Zakir Abdul Magide
+                  Zakir Abdul Magide
 
-                    </span>
+                </span>
 
-                    <span className="hidden md:inline">-</span>
+                <span className="hidden md:inline">-</span>
 
-                    <span>Todos os direitos reservados.</span>
+                <span>Todos os direitos reservados.</span>
 
-                </div>
+              </div>
 
             </footer>
           </div>

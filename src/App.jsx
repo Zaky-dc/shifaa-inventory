@@ -3,10 +3,16 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { GiHamburgerMenu } from "react-icons/gi";
 import SidebarHistorico from "./SidebarHistorico";
-import { MdCloudUpload, MdSave, MdFileDownload, MdSearch } from "react-icons/md";
+import { MdCloudUpload, MdSave, MdFileDownload, MdSearch, MdPictureAsPdf, MdLogout } from "react-icons/md";
 import { FaSpinner } from "react-icons/fa";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable";
+import { useAuth } from "./AuthContext";
+import LoginPage from "./LoginPage";
+import { MOCK_ARMAZEM, MOCK_DATA, MOCK_HISTORICO, MOCK_PRODUTOS, MOCK_CONTAGEM } from "./mockData";
 
 export default function App() {
+  const { mode, logout } = useAuth();
   const [produtos, setProdutos] = useState([]);
   const [contagem, setContagem] = useState({});
   const [armazem, setArmazem] = useState("");
@@ -32,12 +38,17 @@ export default function App() {
 
   const API_URL = import.meta.env.VITE_API_URL || "https://shifaa-inventory-backend.vercel.app/api";
 
+  if (!mode) {
+    return <LoginPage />;
+  }
+
   // Função de ordenação AZ
   const ordenarAZ = (lista) => {
     return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
   };
 
   const handleFileUpload = (e) => {
+    if (mode === "guest") return alert("Modo Convidado: Upload de ficheiros desativado.");
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -103,6 +114,7 @@ export default function App() {
   };
 
   const salvarContagem = async () => {
+    if (mode === "guest") return alert("Modo Convidado: Gravação na base de dados desativada.");
     if (!armazem) return alert("Defina o nome do arquivo antes de salvar.");
     if (produtos.length === 0) return alert("Sem produtos.");
     setIsLoading(true);
@@ -167,6 +179,67 @@ export default function App() {
     );
   };
 
+  const exportarParaPDFZakat = () => {
+    if (!produtos.length) return alert("Sem dados para exportar.");
+
+    const doc = new jsPDF();
+    const dataFormatada = new Date().toLocaleDateString("pt-MZ");
+
+    doc.setFontSize(16);
+    doc.text(`Relatório de Zakat - Setor: ${armazem || "Geral"}`, 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Data: ${dataFormatada}`, 14, 26);
+
+    let totalGlobal = 0;
+    const dadosTabela = produtos.map(p => {
+      const v = contagem[p.codigo];
+      const real = (v === "" || v === undefined) ? 0 : Number(v);
+
+      if (real === 0) return null;
+
+      const preco = p.preco || 0;
+      const totalItem = real * preco;
+      totalGlobal += totalItem;
+
+      return [
+        p.codigo,
+        p.nome.substring(0, 45) + (p.nome.length > 45 ? "..." : ""),
+        real,
+        preco.toLocaleString("pt-MZ", { style: "currency", currency: "MZN" }),
+        totalItem.toLocaleString("pt-MZ", { style: "currency", currency: "MZN" })
+      ];
+    }).filter(Boolean); // remove nulos (onde real === 0)
+
+    if (dadosTabela.length === 0) {
+      return alert("Nenhum item com contagem REAL maior que zero encontrado para o relatório.");
+    }
+
+    doc.autoTable({
+      startY: 32,
+      head: [['Cód.', 'Descrição', 'Quant. (Real)', 'Preço Unit.', 'Valor Total']],
+      body: dadosTabela,
+      theme: 'striped',
+      headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
+      styles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 25, halign: 'center' },
+        3: { cellWidth: 30, halign: 'right' },
+        4: { cellWidth: 30, halign: 'right' },
+      }
+    });
+
+    const finalY = doc.lastAutoTable.finalY || 40;
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(16, 185, 129); // Emerald
+    doc.text(`Valor Total do Setor (Zakat): ${totalGlobal.toLocaleString("pt-MZ", { style: "currency", currency: "MZN" })}`, 14, finalY + 10);
+
+    doc.save(`Zakat_${armazem || "Geral"}_${dataFormatada.replace(/\//g, "-")}.pdf`);
+  };
+
   const produtosFiltrados = produtos.filter((p) => {
     const matchTexto = `${p.codigo} ${p.nome}`.toLowerCase().includes(busca.toLowerCase());
     const valorInput = contagem[p.codigo];
@@ -198,6 +271,19 @@ export default function App() {
         setIsOpen={setIsSidebarOpen}
         onSelecionarData={(d, a) => {
           setIsLoading(true);
+
+          if (mode === "guest") {
+            // Mock Data Flow
+            setTimeout(() => {
+              setProdutos(MOCK_PRODUTOS);
+              setContagem(MOCK_CONTAGEM);
+              setArmazem(a || MOCK_ARMAZEM);
+              setDataSelecionada(d);
+              setIsLoading(false);
+            }, 600);
+            return;
+          }
+
           fetch(`${API_URL}/contagem?data=${d}&armazem=${a}`)
             .then((r) => r.json())
             .then((dados) => {
@@ -205,7 +291,8 @@ export default function App() {
               const listaTratada = dados.map((it) => ({
                 codigo: it.codigo,
                 nome: it.nome,
-                sistema: it.sistema
+                sistema: it.sistema,
+                preco: it.preco || 0
               }));
               setProdutos(ordenarAZ(listaTratada));
               const cont = {};
@@ -226,7 +313,14 @@ export default function App() {
               <GiHamburgerMenu size={22} />
             </button>
             <div className="flex flex-col">
-              <h1 className="text-lg md:text-xl font-bold leading-tight">Inventário</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg md:text-xl font-bold leading-tight">Inventário</h1>
+                {mode === "guest" && (
+                  <span className="bg-amber-100 text-amber-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full border border-amber-200 shadow-sm animate-pulse">
+                    CONVIDADO
+                  </span>
+                )}
+              </div>
               {dataSelecionada && (
                 <span className="text-xs text-indigo-600 font-semibold uppercase tracking-wide">
                   Edição: {dataSelecionada === new Date().toISOString().split("T")[0] ? "Hoje" : new Date(dataSelecionada).toLocaleDateString()}
@@ -236,10 +330,16 @@ export default function App() {
           </div>
 
           <div className="flex gap-2">
-            <button onClick={exportarParaExcel} className="hidden sm:flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium uppercase shadow">
+            <button onClick={logout} title="Terminar Sessão" className="flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 w-9 h-9 md:w-auto md:px-3 md:py-2 rounded-lg text-xs md:text-sm font-medium shadow-sm transition active:scale-95">
+              <MdLogout size={18} /> <span className="hidden md:inline md:ml-2">Sair</span>
+            </button>
+            <button onClick={exportarParaPDFZakat} className="hidden sm:flex items-center gap-2 bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium uppercase shadow active:scale-95 transition">
+              <MdPictureAsPdf size={18} /> <span>PDF Zakat</span>
+            </button>
+            <button onClick={exportarParaExcel} className="hidden sm:flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium uppercase shadow active:scale-95 transition">
               <MdFileDownload size={18} /> <span>Excel</span>
             </button>
-            <button onClick={salvarContagem} className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium uppercase shadow">
+            <button onClick={salvarContagem} className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium uppercase shadow active:scale-95 transition">
               <MdSave size={18} /> <span>Salvar</span>
             </button>
           </div>
@@ -250,17 +350,20 @@ export default function App() {
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
               <div className="p-3 md:p-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
                 <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
-                  {/* ALTERADO: accept=".xlsx, .xls" e o MIME type para Excel antigo */}
-                  <label className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-indigo-100 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-medium text-sm w-full md:w-auto justify-center active:scale-95">
-                    <MdCloudUpload size={20} />
-                    <span>Carregar Excel (.xlsx / .xls)</span>
-                    <input
-                      type="file"
-                      accept=".xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="flex items-center gap-2">
+                    {/* Botão de Upload bloqueado no modo convidado */}
+                    <label className={`cursor-pointer flex items-center gap-2 px-4 py-2 border ${mode === 'guest' ? 'border-gray-200 bg-gray-100 text-gray-400 opacity-60 cursor-not-allowed' : 'border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 active:scale-95'} rounded-lg transition font-medium text-sm w-full md:w-auto justify-center`}>
+                      <MdCloudUpload size={20} />
+                      <span>{mode === 'guest' ? 'Upload Desativado' : 'Carregar Excel (.xlsx / .xls)'}</span>
+                      <input
+                        type="file"
+                        accept=".xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        disabled={mode === 'guest'}
+                      />
+                    </label>
+                  </div>
                   {armazem && <span className="w-full md:w-auto text-center px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold uppercase rounded-full truncate">{armazem}</span>}
                 </div>
               </div>
@@ -297,11 +400,11 @@ export default function App() {
                       <table className="w-full text-sm text-left border-collapse">
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                           <tr>
-                            <th className="px-3 py-3 font-bold whitespace-nowrap bg-gray-50">Cód.</th>
-                            <th className="px-3 py-3 font-bold whitespace-nowrap bg-gray-50 min-w-[150px]">Descrição</th>
-                            <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Sis.</th>
-                            <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Real</th>
-                            <th className="px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Dif.</th>
+                            <th className="px-2 md:px-3 py-3 font-bold whitespace-nowrap bg-gray-50">Cód.</th>
+                            <th className="px-2 md:px-3 py-3 font-bold whitespace-nowrap bg-gray-50 max-w-[150px] md:min-w-[150px]">Descrição</th>
+                            <th className="px-1 md:px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Sis.</th>
+                            <th className="px-1 md:px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Real</th>
+                            <th className="px-1 md:px-2 py-3 text-center font-bold whitespace-nowrap bg-gray-50">Dif.</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -322,7 +425,7 @@ export default function App() {
                                     type="number"
                                     value={valorNoInput}
                                     onChange={(e) => handleContagemChange(p.codigo, e.target.value)}
-                                    className="w-16 text-center border rounded text-sm p-1"
+                                    className="w-14 md:w-16 text-center border rounded text-sm p-2 md:p-1 focus:ring-2 focus:ring-indigo-400 outline-none"
                                     placeholder="-"
                                   />
                                 </td>
@@ -356,24 +459,40 @@ export default function App() {
 
             </div>
 
-            <footer className="mt-4 pb-4 text-center md:text-right border-t border-gray-200 pt-4">
-
-              <div className="text-xs md:text-sm text-gray-500 flex flex-col md:flex-row items-center justify-center md:justify-end gap-1">
-
-                <span>Desenvolvido por</span>
-
-                <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-
-                  Zakir Abdul Magide
-
-                </span>
-
-                <span className="hidden md:inline">-</span>
-
-                <span>Todos os direitos reservados.</span>
-
+            <footer className="mt-4 pb-4 border-t border-gray-200 pt-4 flex flex-col md:flex-row items-center justify-between gap-4">
+              {/* ZAKAT SUMMARY PANEL */}
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 px-4 py-3 rounded-xl shadow-sm flex items-center gap-4 w-full md:w-auto">
+                <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-700 font-bold uppercase tracking-wider mb-0.5">Valor Total Existente (Zakat)</p>
+                  <p className="text-lg md:text-xl font-extrabold text-emerald-900">
+                    {produtosFiltrados.reduce((total, p) => {
+                      const v = contagem[p.codigo];
+                      const real = (v === "" || v === undefined) ? 0 : Number(v);
+                      return total + (real * (p.preco || 0));
+                    }, 0).toLocaleString("pt-MZ", { style: "currency", currency: "MZN" })}
+                  </p>
+                </div>
               </div>
 
+              <div className="text-xs md:text-sm text-gray-500 flex flex-col items-center md:items-end justify-center gap-1">
+                <span className="flex items-center gap-1 text-gray-600 font-medium">
+                  {produtosFiltrados.filter(p => {
+                    const v = contagem[p.codigo];
+                    return (v !== "" && v !== undefined) && Number(v) > 0;
+                  }).length} itens valiosos computados
+                </span>
+                <div className="flex items-center gap-1 mt-1">
+                  <span>Desenvolvido por</span>
+                  <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                    Zakir Abdul Magide
+                  </span>
+                </div>
+              </div>
             </footer>
           </div>
         </div>

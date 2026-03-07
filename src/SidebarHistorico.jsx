@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { AiOutlineClose } from "react-icons/ai";
-import { MdDelete, MdHistory } from "react-icons/md"; // Adicionei ícones novos
+import { MdDelete, MdHistory, MdCloudUpload } from "react-icons/md";
+import { useAuth } from "./AuthContext";
+import { MOCK_HISTORICO } from "./mockData";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://shifaa-inventory-backend.vercel.app/api";
 
 export default function SidebarHistorico({ isOpen, setIsOpen, onSelecionarData }) {
+  const { mode } = useAuth();
   const [registros, setRegistros] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPrecos, setLoadingPrecos] = useState(false);
   const [buscaHistorico, setBuscaHistorico] = useState("");
 
   useEffect(() => {
@@ -17,6 +21,15 @@ export default function SidebarHistorico({ isOpen, setIsOpen, onSelecionarData }
 
   const fetchHistorico = async () => {
     setLoading(true);
+
+    if (mode === "guest") {
+      setTimeout(() => {
+        setRegistros(MOCK_HISTORICO);
+        setLoading(false);
+      }, 500);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/datas`);
       const data = await response.json();
@@ -33,16 +46,61 @@ export default function SidebarHistorico({ isOpen, setIsOpen, onSelecionarData }
     setIsOpen(false);
   };
 
+  const handleUploadPrecos = (e) => {
+    if (mode === "guest") return alert("Modo Convidado: Envio de preçário desativado.");
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoadingPrecos(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const XLSX = await import("xlsx");
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+
+        const json = XLSX.utils.sheet_to_json(sheet).map((item) => {
+          return {
+            codigo: String(item["Cód."] ?? item["Cod."] ?? item.Cod ?? item.Cód ?? item.Código ?? item.codigo ?? "").trim(),
+            preco: Number(item["Preço"] ?? item["Preco"] ?? item.preco ?? item.Preço_Unitario ?? 0) || 0,
+          };
+        }).filter(p => p.codigo !== "" && p.preco > 0);
+
+        if (json.length === 0) {
+          alert("Nenhum preço válido encontrado (verifique se as colunas são 'Código' e 'Preço').");
+          return;
+        }
+
+        const res = await fetch(`${API_URL}/precos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(json),
+        });
+
+        const dataRes = await res.json();
+        if (res.ok) alert(dataRes.message + ` (${dataRes.totalInjetados} itens)`);
+        else alert(dataRes.message || "Erro a atualizar preços.");
+
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao ler o ficheiro de preços.");
+      } finally {
+        setLoadingPrecos(false);
+        e.target.value = null; // reset input
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   // FUNÇÃO PARA APAGAR
   const handleDelete = async (e, itemData, itemArmazem) => {
     // stopPropagation evita que ao clicar no lixo, o sistema "abra" a contagem ao mesmo tempo
     e.stopPropagation();
+    if (mode === "guest") return alert("Modo Convidado: Remoção de dados da base de dados bloqueada.");
 
-    const confirmacao = window.confirm(
-      `TEM A CERTEZA?\n\nVai apagar permanentemente a contagem:\nFicheiro: ${itemArmazem}\nData: ${itemData}`
-    );
-
-    if (!confirmacao) return;
+    if (!window.confirm(`Tem certeza que deseja APAGAR os dados de ${itemArmazem} do dia ${itemData}? Esta ação é irreversível.`)) return;
 
     try {
       // Chama o endpoint DELETE passando data e armazem
@@ -157,8 +215,27 @@ export default function SidebarHistorico({ isOpen, setIsOpen, onSelecionarData }
         </div>
 
         {/* Footer da Sidebar */}
-        <div className="p-4 border-t border-gray-200 bg-white text-xs text-center text-gray-400">
-          Clique num item para carregar
+        <div className="p-4 border-t border-gray-200 bg-white flex flex-col gap-2 relative">
+          <label className={`cursor-pointer flex items-center justify-center gap-2 p-2 w-full text-xs font-bold text-white rounded shadow-sm transition ${mode === 'guest' ? 'bg-gray-400 opacity-60 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700 active:scale-95'}`}>
+            {loadingPrecos ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <>
+                <MdCloudUpload size={16} />
+                <span>{mode === 'guest' ? 'ZAKAT DESATIVADO' : 'ATUALIZAR TABELA ZAKAT'}</span>
+              </>
+            )}
+            <input
+              type="file"
+              accept=".xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              onChange={handleUploadPrecos}
+              className="hidden"
+              disabled={mode === 'guest'}
+            />
+          </label>
+          <div className="text-[10px] text-center text-gray-400">
+            Faz upload Excel com colunas "Cód." e "Preço"
+          </div>
         </div>
       </div>
     </>
